@@ -1,0 +1,1314 @@
+/* ==========================================================================
+   DryAF - Cartoon Wasteland & Comic Survival Design System
+   Generated & Crafted based on Stitch MCP "DryAF Wasteland Survival" Spec
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@600;700;800&display=swap');
+
+:root {
+  /* Core Comic Palette - Sun-Baked Parchment (Light) */
+  --bg-primary: #fffbeb;
+  --bg-surface: #fef3c7;
+  --bg-surface-card: #ffffff;
+  --bg-subtle: #fde68a;
+  --bg-highlight: #fef9c3;
+  
+  /* Ink Structure */
+  --ink-black: #18181b;
+  --ink-border: 3px solid var(--ink-black);
+  --ink-border-sm: 2px solid var(--ink-black);
+  --ink-border-lg: 4px solid var(--ink-black);
+  
+  /* Hard Block Shadows (Zero Blur) */
+  --comic-shadow-sm: 2px 2px 0px var(--ink-black);
+  --comic-shadow: 4px 4px 0px var(--ink-black);
+  --comic-shadow-lg: 6px 6px 0px var(--ink-black);
+  --comic-shadow-modal: 8px 8px 0px var(--ink-black);
+
+  /* Comic Pop Accent Colors */
+  --oasis-cyan: #0284c7;
+  --oasis-cyan-light: #38bdf8;
+  --oasis-cyan-bg: #e0f2fe;
+
+  --desert-amber: #f59e0b;
+  --desert-amber-light: #fde047;
+  --desert-amber-bg: #fef3c7;
+
+  --hazard-red: #ef4444;
+  --hazard-red-dark: #dc2626;
+  --hazard-red-bg: #fee2e2;
+
+  --cactus-green: #10b981;
+  --cactus-green-dark: #059669;
+  --cactus-green-bg: #d1fae5;
+
+  /* Typography Colors */
+  --text-primary: #18181b;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+
+  /* Typography Scales */
+  --font-display: 'Bungee', 'Space Grotesk', cursive, sans-serif;
+  --font-comic: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Layout */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --container-max-width: 980px;
+
+  /* Motion */
+  --transition-snap: 120ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  /* Wasteland Night Palette */
+  --bg-primary: #090d16;
+  --bg-surface: #111827;
+  --bg-surface-card: #1e293b;
+  --bg-subtle: #162238;
+  --bg-highlight: #1e293b;
+
+  --ink-black: #000000;
+  --ink-border: 3px solid #000000;
+  --ink-border-sm: 2px solid #000000;
+  --ink-border-lg: 4px solid #000000;
+
+  --comic-shadow-sm: 2px 2px 0px #000000;
+  --comic-shadow: 4px 4px 0px #000000;
+  --comic-shadow-lg: 6px 6px 0px #000000;
+  --comic-shadow-modal: 8px 8px 0px #000000;
+
+  --oasis-cyan: #38bdf8;
+  --oasis-cyan-light: #7dd3fc;
+  --oasis-cyan-bg: rgba(56, 189, 248, 0.2);
+
+  --desert-amber: #fbbf24;
+  --desert-amber-light: #fef08a;
+  --desert-amber-bg: rgba(251, 191, 36, 0.2);
+
+  --hazard-red: #f87171;
+  --hazard-red-dark: #ef4444;
+  --hazard-red-bg: rgba(239, 68, 68, 0.2);
+
+  --cactus-green: #34d399;
+  --cactus-green-dark: #10b981;
+  --cactus-green-bg: rgba(16, 185, 129, 0.2);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-inverse: #090d16;
+}
+
+/* ==========================================================================
+   Base & Reset
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  background-image: 
+    linear-gradient(rgba(255, 251, 235, 0.42), rgba(255, 251, 235, 0.65)),
+    url('/oasis_backdrop_day.jpg');
+  background-size: cover;
+  background-position: center bottom;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background-image var(--transition-snap);
+}
+
+[data-theme="dark"] body {
+  background-image: 
+    linear-gradient(rgba(9, 13, 22, 0.55), rgba(9, 13, 22, 0.75)),
+    url('/oasis_backdrop_night.jpg');
+}
+
+.app-container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* ==========================================================================
+   Comic Header
+   ========================================================================== */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: 14px 20px;
+  background: var(--bg-surface);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-md);
+  position: relative;
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  background: var(--desert-amber);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  transform: rotate(-3deg);
+  transition: transform var(--transition-snap);
+}
+
+.brand-icon:hover {
+  transform: rotate(4deg) scale(1.08);
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-tag {
+  font-family: var(--font-comic);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--hazard-red);
+  color: white;
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  transform: rotate(2deg);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Room Identifier Badge */
+.room-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-comic);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-snap);
+}
+
+.room-badge:hover {
+  background-color: var(--oasis-cyan-bg);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow);
+}
+
+.room-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--cactus-green);
+  border: 2px solid var(--ink-black);
+}
+
+/* Comic Icon Buttons */
+.btn-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  background-color: var(--bg-surface-card);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all var(--transition-snap);
+}
+
+.btn-icon:hover {
+  background-color: var(--bg-subtle);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow);
+}
+
+.btn-icon:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px var(--ink-black);
+}
+
+/* Profile Icon Button (Top Right) */
+.profile-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 3px 14px 3px 8px;
+  background-color: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-comic);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-snap);
+}
+
+.profile-icon-btn:hover {
+  background-color: var(--desert-amber-bg);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow);
+}
+
+.profile-icon-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px var(--ink-black);
+}
+
+.profile-avatar-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background-color: var(--desert-amber);
+  border: 2px solid var(--ink-black);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.profile-name-text {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Switch Room Button */
+.btn-switch-room {
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  font-family: var(--font-comic);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-snap);
+}
+
+.btn-switch-room:hover {
+  background: var(--hazard-red-bg);
+  color: var(--hazard-red-dark);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow);
+}
+
+/* ==========================================================================
+   Hero Grid: Reservoir & Sacrifice Spotlight
+   ========================================================================== */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 22px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 820px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Comic Panel Containers */
+.comic-card {
+  background-color: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  position: relative;
+  overflow: visible;
+}
+
+.card-header-comic {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  border-bottom: 2px solid var(--ink-black);
+  padding-bottom: 10px;
+}
+
+.card-label-comic {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+/* Comic Speech Bubble */
+.comic-bubble {
+  position: relative;
+  background: var(--bg-surface);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-family: var(--font-comic);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.comic-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 20px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 9px solid var(--ink-black);
+}
+
+/* Keg / Reservoir Card */
+.keg-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  border: var(--ink-border-sm);
+  box-shadow: var(--comic-shadow-sm);
+  text-transform: uppercase;
+}
+
+.keg-status-badge.full {
+  background-color: var(--oasis-cyan-light);
+  color: var(--ink-black);
+}
+
+.keg-status-badge.empty {
+  background-color: var(--hazard-red);
+  color: white;
+  animation: alarm-shake 0.8s infinite;
+}
+
+@keyframes alarm-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+}
+
+.keg-visual-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 16px 0 24px;
+}
+
+/* Cartoon Water Reservoir (Bottle) */
+.keg-bottle {
+  width: 104px;
+  height: 154px;
+  border: var(--ink-border);
+  border-radius: 12px 12px 18px 18px;
+  background-color: rgba(224, 242, 254, 0.4);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 4px 4px 0px rgba(255, 255, 255, 0.6), var(--comic-shadow-sm);
+  flex-shrink: 0;
+}
+
+.keg-bottle::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 6px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  z-index: 5;
+}
+
+.keg-neck {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 38px;
+  height: 12px;
+  border: var(--ink-border);
+  border-bottom: none;
+  background: var(--oasis-cyan-light);
+  border-radius: 4px 4px 0 0;
+}
+
+.keg-liquid {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 85%;
+  background: linear-gradient(180deg, var(--oasis-cyan-light) 0%, var(--oasis-cyan) 100%);
+  border-top: 3px solid var(--ink-black);
+  transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.keg-liquid.empty {
+  height: 10% !important;
+  background: var(--hazard-red) !important;
+  border-top-color: var(--ink-black);
+}
+
+.keg-liquid-wave {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 10px,
+    rgba(255, 255, 255, 0.4) 10px,
+    rgba(255, 255, 255, 0.4) 20px
+  );
+  animation: wave-crawl 2s linear infinite;
+}
+
+@keyframes wave-crawl {
+  from { transform: translateX(0); }
+  to { transform: translateX(-20px); }
+}
+
+.keg-info {
+  flex: 1;
+}
+
+.keg-title {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.keg-subtitle {
+  font-family: var(--font-comic);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.keg-meta {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Comic Action Buttons */
+.keg-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-comic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-snap);
+  user-select: none;
+}
+
+.btn-comic:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow-lg);
+}
+
+.btn-comic:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0px var(--ink-black);
+}
+
+.btn-comic-primary {
+  background-color: var(--oasis-cyan);
+  color: white;
+}
+
+.btn-comic-primary:hover {
+  background-color: #0369a1;
+}
+
+.btn-comic-danger {
+  background-color: var(--hazard-red);
+  color: white;
+}
+
+.btn-comic-danger:hover {
+  background-color: var(--hazard-red-dark);
+}
+
+.btn-comic-secondary {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.btn-comic-secondary:hover {
+  background-color: var(--bg-subtle);
+}
+
+.btn-comic-sm {
+  padding: 7px 14px;
+  font-size: 0.82rem;
+}
+
+/* Spotlight Card: The Next Sacrifice */
+.spotlight-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  position: relative;
+}
+
+.spotlight-sticker {
+  position: absolute;
+  top: -12px;
+  right: 18px;
+  background: var(--desert-amber);
+  color: var(--ink-black);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 4px 12px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: rotate(3deg);
+}
+
+.spotlight-user-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0 18px;
+}
+
+.spotlight-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  transform: rotate(-3deg);
+}
+
+.spotlight-name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.spotlight-urgency {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-comic);
+  font-weight: 800;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+.spotlight-urgency.urgent {
+  background-color: var(--hazard-red);
+  color: white;
+}
+
+.spotlight-urgency.warning {
+  background-color: var(--desert-amber);
+  color: var(--ink-black);
+}
+
+.spotlight-urgency.good {
+  background-color: var(--cactus-green);
+  color: white;
+}
+
+.spotlight-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 2px dashed var(--ink-black);
+}
+
+.metric-item {
+  background: var(--bg-surface-card);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.metric-label {
+  font-family: var(--font-comic);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.metric-val {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Roommate Turn Queue (Wasteland Survivors)
+   ========================================================================== */
+.section-header-comic {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title-comic {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-count-comic {
+  font-family: var(--font-comic);
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: var(--bg-surface);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Comic Queue Card */
+.queue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  transition: all var(--transition-snap);
+}
+
+.queue-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow-lg);
+}
+
+.queue-card.rank-1 {
+  background: var(--bg-surface);
+  border: var(--ink-border-lg);
+  box-shadow: var(--comic-shadow-lg);
+}
+
+.queue-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.queue-rank {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  width: 32px;
+  color: var(--text-muted);
+}
+
+.queue-card.rank-1 .queue-rank {
+  color: var(--hazard-red);
+}
+
+.queue-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.queue-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.queue-user-name {
+  font-family: var(--font-comic);
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-user-sub {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* Comic Segmented Contribution Bar */
+.fairness-bar-container {
+  width: 130px;
+  height: 18px;
+  background: var(--bg-primary);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.fairness-bar-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--oasis-cyan),
+    var(--oasis-cyan) 6px,
+    var(--oasis-cyan-light) 6px,
+    var(--oasis-cyan-light) 12px
+  );
+  border-right: 2px solid var(--ink-black);
+}
+
+/* ==========================================================================
+   Oasis Chronicles (Refill Proof Feed)
+   ========================================================================== */
+.history-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  transition: all var(--transition-snap);
+}
+
+.history-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.history-photo-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform var(--transition-snap);
+}
+
+.history-photo-thumb:hover {
+  transform: scale(1.1) rotate(-3deg);
+}
+
+.history-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-filler {
+  font-family: var(--font-comic);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.history-time {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-badge {
+  font-family: var(--font-comic);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--cactus-green);
+  color: white;
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-report {
+  background: var(--hazard-red-bg);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  color: var(--hazard-red-dark);
+  font-family: var(--font-comic);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-snap);
+}
+
+.btn-report:hover {
+  background: var(--hazard-red);
+  color: white;
+  transform: translate(-1px, -1px);
+}
+
+.history-card.reported {
+  opacity: 0.55;
+  border-style: dashed;
+  background: var(--bg-subtle);
+}
+
+.history-card.reported .history-filler {
+  text-decoration: line-through;
+}
+
+/* ==========================================================================
+   Gatekeeper / Login Billboard
+   ========================================================================== */
+.auth-wrapper {
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-surface);
+  border: var(--ink-border-lg);
+  box-shadow: var(--comic-shadow-modal);
+  border-radius: var(--radius-md);
+  padding: 40px 32px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-size: 2.3rem;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.auth-subtitle {
+  font-family: var(--font-comic);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.auth-tabs {
+  display: flex;
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 24px;
+  gap: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-comic);
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-snap);
+}
+
+.auth-tab.active {
+  background: var(--desert-amber);
+  color: var(--ink-black);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-family: var(--font-comic);
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: all var(--transition-snap);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--oasis-cyan);
+  box-shadow: 4px 4px 0px var(--oasis-cyan);
+}
+
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 24, 27, 0.75);
+  backdrop-filter: blur(3px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-backdrop.active {
+  display: flex;
+}
+
+.modal-window {
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: var(--ink-border-lg);
+  box-shadow: var(--comic-shadow-modal);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--ink-black);
+  padding-bottom: 12px;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+
+/* Active Filler Lock Pill */
+.active-filler-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--desert-amber-bg);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-comic);
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* Scanner HUD */
+.scanner-box {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #090d16;
+  border: var(--ink-border-lg);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanner-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.scanner-reticle {
+  position: absolute;
+  inset: 20px;
+  border: 3px dashed var(--oasis-cyan-light);
+  border-radius: 8px;
+}
+
+.hud-pill {
+  background: var(--ink-black);
+  color: var(--oasis-cyan-light);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 2px solid var(--oasis-cyan-light);
+  align-self: flex-start;
+}
+
+.scanner-video, .scanner-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* AI Verdict Box */
+.verdict-box {
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.verdict-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.verdict-status.pass {
+  color: var(--cactus-green-dark);
+}
+
+.verdict-status.fail {
+  color: var(--hazard-red-dark);
+}
+
+.verdict-meter {
+  height: 16px;
+  background: var(--bg-primary);
+  border: var(--ink-border-sm);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.verdict-meter-fill {
+  height: 100%;
+  background: var(--oasis-cyan);
+  transition: width 0.5s ease;
+}
+
+.verdict-meter-fill.low {
+  background: var(--hazard-red);
+}
+
+.verdict-desc {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  background: var(--bg-surface);
+  border: var(--ink-border-lg);
+  box-shadow: var(--comic-shadow-lg);
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  font-family: var(--font-comic);
+  font-weight: 800;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toast-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes toast-pop {
+  from { transform: translateY(20px) scale(0.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}

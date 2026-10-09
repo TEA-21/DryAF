@@ -1,0 +1,29 @@
+{
+  "name": "dryaf",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hostel Dehydration Survival Guide — Smart Roommate Water Refill Tracker with On-Device AI Photo Verification",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "hostel",
+    "dorm",
+    "water-tracker",
+    "roommate",
+    "computer-vision",
+    "fairness",
+    "neo-brutalism",
+    "lru"
+  ],
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "firebase": "^10.13.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.8"
+  }
+}

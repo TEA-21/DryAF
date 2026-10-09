@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌵</text></svg>" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DryAF — Hostel Dehydration Survival Guide</title>
+  <meta name="description" content="Hostel water keg tracker with comedic wasteland survival lore, fair turn queueing, and on-device photo verification." />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- ====================================================================
+         VIEW 1: GATEKEEPER / OASIS ENTRY BILLBOARD
+         ==================================================================== -->
+    <div id="loginView" class="auth-wrapper" style="display: none;">
+      <div class="auth-card">
+        <button class="btn-icon theme-toggle-auth" id="loginThemeToggleBtn" aria-label="Toggle Theme" title="Toggle Wasteland Day / Night" style="position: absolute; top: 18px; right: 18px;">
+          <span id="loginThemeIconSun">☀️</span>
+          <span id="loginThemeIconMoon" style="display: none;">🌙</span>
+        </button>
+
+        <div class="auth-header">
+          <div class="brand-icon" style="margin: 0 auto 16px;">
+            🌵
+          </div>
+          <h1 class="auth-title">DryAF</h1>
+          <p class="auth-subtitle">Hostel Dehydration Survival Guide</p>
+          <div class="comic-bubble" style="margin-top: 10px;">
+            "Who Left The Oasis Dry?!" 💀
+          </div>
+        </div>
+
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="tabJoinRoomBtn">Raid Existing Oasis</button>
+          <button type="button" class="auth-tab" id="tabCreateRoomBtn">Found New Oasis</button>
+        </div>
+
+        <!-- Form 1: Join Oasis via Code -->
+        <form id="joinRoomForm" class="auth-form">
+          <div class="form-group">
+            <label class="form-label" for="loginRoomCode">Oasis Code</label>
+            <input type="text" class="form-input" id="loginRoomCode" placeholder="e.g. B-304" required />
+            <p class="form-hint">Enter your hostel room code or join via an invite link</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginUserName">Your Wastelander Name</label>
+            <input type="text" class="form-input" id="loginUserName" placeholder="e.g. Rahul" required />
+          </div>
+          <button type="submit" class="btn-comic btn-comic-primary" style="width: 100%; margin-top: 10px;">
+            Enter Oasis
+          </button>
+        </form>
+
+        <!-- Form 2: Found New Oasis -->
+        <form id="createRoomForm" class="auth-form" style="display: none;">
+          <div class="form-group">
+            <label class="form-label" for="newHostelBlock">Hostel Block</label>
+            <input type="text" class="form-input" id="newHostelBlock" placeholder="e.g. Block B or Hostel 4" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newRoomNumber">Room Number</label>
+            <input type="text" class="form-input" id="newRoomNumber" placeholder="e.g. 304" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newCreatorName">Your Name</label>
+            <input type="text" class="form-input" id="newCreatorName" placeholder="e.g. Rahul" required />
+          </div>
+          <button type="submit" class="btn-comic btn-comic-primary" style="width: 100%; margin-top: 10px;">
+            Found & Enter Oasis
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         VIEW 2: MAIN WASTELAND DASHBOARD
+         ==================================================================== -->
+    <div id="dashboardView" style="display: none;">
+      <!-- Comic Header -->
+      <header class="app-header">
+        <div class="brand-wrapper">
+          <div class="brand-icon" id="brandLogo">
+            🌵
+          </div>
+          <div>
+            <h1 class="brand-title">DryAF</h1>
+          </div>
+        </div>
+
+        <div class="header-controls">
+          <div class="room-badge" id="currentRoomBadge" title="Click to leave or switch room">
+            <span class="room-dot"></span>
+            <span id="currentRoomCodeLabel">Block B • Room 304</span>
+          </div>
+
+          <button class="btn-icon" id="themeToggleBtn" aria-label="Toggle Theme" title="Toggle Wasteland Day / Night">
+            <span id="themeIconSun">☀️</span>
+            <span id="themeIconMoon" style="display: none;">🌙</span>
+          </button>
+
+          <button class="btn-switch-room" id="switchRoomBtn" title="Switch or leave room">
+            Switch Room
+          </button>
+
+          <!-- Top-right profile badge (No switching other roommates) -->
+          <button class="profile-icon-btn" id="switchProfileBtn" aria-label="Roommate Dossier" title="Click to view dossier or log out">
+            <span class="profile-avatar-icon" id="activeUserAvatar">👤</span>
+            <span class="profile-name-text" id="activeUserName">Alex</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Comic Hero Grid -->
+      <main>
+        <div class="hero-grid">
+          <!-- 1. Reservoir Card (Water Keg Visualizer) -->
+          <section class="comic-card" id="kegCard">
+            <div class="card-header-comic">
+              <span class="card-label-comic">OASIS RESERVOIR</span>
+              <span class="keg-status-badge full" id="kegStatusBadge">
+                <span class="status-dot"></span>
+                <span id="kegStatusText">FULL (100%)</span>
+              </span>
+            </div>
+
+            <div class="comic-bubble" id="kegBubbleNotice">
+              "STAY HYDRATED, WASTELANDER!" 💧
+            </div>
+
+            <div class="keg-visual-container">
+              <div class="keg-bottle" id="kegBottle">
+                <div class="keg-neck"></div>
+                <div class="keg-liquid" id="kegLiquid">
+                  <div class="keg-liquid-wave"></div>
+                </div>
+              </div>
+
+              <div class="keg-info">
+                <h2 class="keg-title" id="kegHeadline">OASIS IS FULL & CHILLED</h2>
+                <p class="keg-subtitle" id="kegSubtitle">Last refilled by Taylor (yesterday)</p>
+                <p class="keg-meta" id="kegMetaDetails">5-Gallon Drinking Water Reservoir</p>
+              </div>
+            </div>
+
+            <div class="keg-actions">
+              <button class="btn-comic btn-comic-primary" id="openRefillModalBtn">
+                📸 SNAP PROOF OF OASIS
+              </button>
+              <button class="btn-comic btn-comic-danger" id="reportEmptyBtn">
+                🚨 SOUND DEHYDRATION ALARM
+              </button>
+            </div>
+          </section>
+
+          <!-- 2. Spotlight Card (The Next Sacrifice) -->
+          <section class="spotlight-card" id="spotlightCard">
+            <div class="spotlight-sticker">NEXT UP</div>
+            <div class="card-header-comic" style="margin-bottom: 8px;">
+              <span class="card-label-comic">🔥 NEXT SACRIFICE</span>
+            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-comic); font-weight: 700; text-transform: uppercase;">
+              Chosen by the Ancient Laws of Parched Parity
+            </p>
+
+            <div class="spotlight-user-hero">
+              <div class="spotlight-avatar" id="spotlightAvatar">⚡</div>
+              <div>
+                <h3 class="spotlight-name" id="spotlightName">Sam B.</h3>
+                <div class="spotlight-urgency urgent" id="spotlightUrgencyBadge">
+                  <span>CRITICALLY PARCHED</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="spotlight-metrics">
+              <div class="metric-item">
+                <span class="metric-label">Last Refilled</span>
+                <span class="metric-val" id="spotlightLastRefill">Never</span>
+              </div>
+              <div class="metric-item">
+                <span class="metric-label">Refill Debt</span>
+                <span class="metric-val" id="spotlightDeficit">-2 fills behind</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- 3. Roommate Turn Queue (Wasteland Survivor parities) -->
+        <section class="comic-card" style="margin-bottom: 24px;">
+          <div class="section-header-comic">
+            <h2 class="section-title-comic">
+              SURVIVOR TURN ORDER
+              <span class="section-count-comic" id="roommatesCountBadge">4 Roommates</span>
+            </h2>
+            <button class="btn-comic btn-comic-secondary btn-comic-sm" id="openInviteBtn">
+              📢 SUMMON ROOMMATES
+            </button>
+          </div>
+
+          <div class="queue-list" id="queueListContainer">
+            <!-- Roommates rendered dynamically -->
+          </div>
+        </section>
+
+        <!-- 4. Oasis Chronicles (Refill Proof Activity Feed) -->
+        <section class="comic-card">
+          <div class="section-header-comic">
+            <h2 class="section-title-comic">
+              OASIS CHRONICLES
+              <span class="section-count-comic" id="historyCountBadge">2 Fills</span>
+            </h2>
+          </div>
+
+          <div class="history-feed" id="historyFeedContainer">
+            <!-- History rendered dynamically -->
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 1: REFILL WITH AI PHOTO VERIFICATION
+         ==================================================================== -->
+    <div class="modal-backdrop" id="refillModal">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h2 class="modal-title">VERIFY OASIS REFILL</h2>
+          <button class="btn-icon" id="closeRefillModalBtn">✕</button>
+        </div>
+
+        <!-- Locked identity notice -->
+        <div class="active-filler-badge">
+          <span>Refilling As:</span>
+          <span id="refillActiveUserName" style="color: var(--oasis-cyan); font-weight: 800;">Alex</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Upload proof of full water keg</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <label class="btn-comic btn-comic-secondary btn-comic-sm" style="flex: 1; text-align: center;">
+              📁 Upload Photo
+              <input type="file" id="photoFileInput" accept="image/*" style="display: none;" />
+            </label>
+            <button class="btn-comic btn-comic-secondary btn-comic-sm" id="toggleWebcamBtn" style="flex: 1;">
+              📷 Use Camera
+            </button>
+        </div>
+
+        <!-- Scanner Box with Reticle -->
+        <div class="scanner-box" id="scannerBox">
+          <video id="scannerVideo" class="scanner-video" autoplay playsinline muted style="display: none;"></video>
+          <img id="scannerPreviewImg" class="scanner-preview-img" alt="Scan preview" style="display: none;" />
+          <div id="scannerPlaceholder" style="text-align: center; color: var(--text-muted); padding: 20px;">
+            <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">🔍</span>
+            <span style="font-family: var(--font-comic); font-weight: 700; text-transform: uppercase;">Awaiting Photo Proof</span>
+          </div>
+
+          <div class="scanner-hud" id="scannerHud" style="display: none;">
+            <div class="scanner-reticle"></div>
+            <div class="hud-pill" id="hudConfidence">Scanning...</div>
+          </div>
+        </div>
+
+        <!-- Action inside Scanner -->
+        <button class="btn-comic btn-comic-primary" id="captureWebcamBtn" style="width: 100%; display: none; margin-bottom: 14px;">
+          📸 Capture Photo
+        </button>
+
+        <!-- AI Verdict Box -->
+        <div class="verdict-box" id="aiVerdictBox" style="display: none;">
+          <div class="verdict-status" id="verdictStatus">
+            <span id="verdictIcon">✓</span>
+            <span id="verdictText">Water Level: 94% (Verified Full)</span>
+          </div>
+          <div class="verdict-meter">
+            <div class="verdict-meter-fill" id="verdictMeterFill" style="width: 94%;"></div>
+          </div>
+          <p class="verdict-desc" id="verdictDescription">
+            Water level verified! Ready to be logged under your name.
+          </p>
+        </div>
+
+        <button class="btn-comic btn-comic-primary" id="confirmRefillSubmitBtn" style="width: 100%;" disabled>
+          Confirm & Log Refill
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 2: SUMMON ROOMMATES (INVITE LINK)
+         ==================================================================== -->
+    <div class="modal-backdrop" id="inviteModal">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h2 class="modal-title">📢 SUMMON ROOMMATES</h2>
+          <button class="btn-icon" id="closeInviteModalBtn">✕</button>
+        </div>
+
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 14px; font-family: var(--font-comic); font-weight: 600;">
+          Share this Oasis link with your roommates so they can join the survival queue:
+        </p>
+
+        <div style="text-align: center; margin: 14px 0;">
+          <div class="comic-bubble" id="inviteRoomCodeDisplay" style="font-size: 1.3rem;">
+            B-304
+          </div>
+          <p id="inviteHostelRoomLabel" style="font-size: 0.88rem; font-family: var(--font-mono); font-weight: 700; color: var(--text-secondary);">
+            Block B • Room 304
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inviteLinkInput">Invite Link</label>
+          <input type="text" class="form-input" id="inviteLinkInput" readonly />
+        </div>
+
+        <button class="btn-comic btn-comic-primary" id="copyInviteMessageBtn" style="width: 100%; margin-top: 8px;">
+          📋 Copy WhatsApp / Message Invite
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 3: ROOMMATE DOSSIER & LOG OUT
+         ==================================================================== -->
+    <div class="modal-backdrop" id="profileModal">
+      <div class="modal-window" style="max-width: 400px; text-align: center;">
+        <div class="modal-header">
+          <h2 class="modal-title">WASTELANDER DOSSIER</h2>
+          <button class="btn-icon" id="closeProfileModalBtn">✕</button>
+        </div>
+
+        <div style="margin: 20px 0 16px;">
+          <div class="spotlight-avatar" style="margin: 0 auto 12px; width: 72px; height: 72px; font-size: 2.2rem;" id="profileModalAvatar">
+            👤
+          </div>
+          <h3 id="profileModalName" style="font-family: var(--font-display); font-size: 1.4rem; color: var(--text-primary); margin-bottom: 4px;">Alex</h3>
+          <p id="profileModalRoom" style="font-size: 0.88rem; color: var(--text-secondary); font-family: var(--font-mono); font-weight: 700;">Block B • Room 304</p>
+        </div>
+
+        <div style="background: var(--bg-surface-card); border: var(--ink-border); box-shadow: var(--comic-shadow-sm); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 20px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-family: var(--font-comic); font-weight: 700; text-transform: uppercase; font-size: 0.82rem; color: var(--text-secondary);">Your Fills:</span>
+            <span id="profileModalFills" style="font-family: var(--font-mono); font-weight: 700; color: var(--oasis-cyan);">0 refills</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="font-family: var(--font-comic); font-weight: 700; text-transform: uppercase; font-size: 0.82rem; color: var(--text-secondary);">Device Access:</span>
+            <span style="font-family: var(--font-comic); font-weight: 800; text-transform: uppercase; font-size: 0.82rem; color: var(--hazard-red-dark);">Locked to your name</span>
+          </div>
+        </div>
+
+        <button class="btn-comic btn-comic-danger" id="profileLogoutBtn" style="width: 100%;">
+          🚪 FLEE OASIS (LOG OUT)
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 4: PHOTO PROOF LIGHTBOX
+         ==================================================================== -->
+    <div class="modal-backdrop" id="lightboxModal">
+      <div class="modal-window" style="max-width: 640px; text-align: center;">
+        <div class="modal-header">
+          <h2 class="modal-title" id="lightboxTitle">PROOF OF OASIS</h2>
+          <button class="btn-icon" id="closeLightboxModalBtn">✕</button>
+        </div>
+        <img id="lightboxImage" src="" alt="Proof Enlarged" style="max-width: 100%; border: var(--ink-border); box-shadow: var(--comic-shadow); border-radius: var(--radius-sm); margin: 12px 0;" />
+        <p id="lightboxDetails" style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono); font-weight: 600;"></p>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+  </div>
+
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>
