@@ -33,4 +33,5 @@ Thumbs.db
 # Internal Agent Planning & Progress Files (Excluded from GitHub)
 PLAN.md
 PROGRESS.md
-RoomKegFill.jpeg
+/RoomKegFill.jpeg
+scratch/

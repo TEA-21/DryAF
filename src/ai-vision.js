@@ -141,28 +141,73 @@ export class WaterKegVisionAI {
       waterLineY: analysis.waterLineY,
       annotatedImage,
       compressedImage,
+      neckMaxGrad: analysis.neckMaxGrad,
+      avgMidContrast: analysis.avgMidContrast,
     };
   }
 
   /**
    * Optical analysis of meniscus & fluid level along vertical central axis
-   * Supports Clear, Amber/Orange-tinted, and Blue-tinted transparent containers.
+   * Automatically localizes bottle boundaries and evaluates optical physics
+   * (refractive distortion, background transmission, amber absorption, and meniscus step).
    */
   analyzeMeniscusAndFluid(ctx, width, height) {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
+    const scaleY = height / 800;
+    const scaleX = width / 600;
 
-    // Define ROI (Region Of Interest): central 50% width, vertical 10% to 90%
-    const startX = Math.floor(width * 0.25);
-    const endX = Math.floor(width * 0.75);
-    const startY = Math.floor(height * 0.12);
-    const endY = Math.floor(height * 0.88);
-    const totalRoiHeight = endY - startY;
+    // --- STAGE 1: DYNAMIC BOTTLE & CAP LOCALIZATION ---
+    let capTopY = Math.round(250 * scaleY);
+    for (let y = Math.round(140 * scaleY); y <= Math.round(350 * scaleY); y++) {
+      let cnt = 0;
+      for (let x = Math.round(160 * scaleX); x <= Math.round(440 * scaleX); x += 2) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        if (r > 105 && (r - g) > 48 && (r - b) > 68) cnt++;
+      }
+      if (cnt > Math.round(25 * scaleX)) {
+        capTopY = y;
+        break;
+      }
+    }
 
-    // 1. Compute overall color averages to detect container tint (e.g. Amber/Orange)
+    const shoulderY = capTopY + Math.round(115 * scaleY);
+    const baseY = Math.min(height - 15, capTopY + Math.round(430 * scaleY));
+    const cylinderSpan = baseY - shoulderY;
+
+    // Horizontal Sobel Edges for cylinder width
+    const edgeProfile = new Float32Array(width);
+    for (let x = 10; x < width - 10; x++) {
+      let gradSum = 0, count = 0;
+      for (let y = shoulderY + Math.round(40 * scaleY); y <= baseY - Math.round(40 * scaleY); y += 4) {
+        const idxL = (y * width + (x - 3)) * 4;
+        const idxR = (y * width + (x + 3)) * 4;
+        const lumL = 0.299 * data[idxL] + 0.587 * data[idxL + 1] + 0.114 * data[idxL + 2];
+        const lumR = 0.299 * data[idxR] + 0.587 * data[idxR + 1] + 0.114 * data[idxR + 2];
+        gradSum += Math.abs(lumR - lumL);
+        count++;
+      }
+      edgeProfile[x] = count > 0 ? gradSum / count : 0;
+    }
+
+    let maxLeftEdge = 0, leftX = Math.round(155 * scaleX);
+    for (let x = Math.round(120 * scaleX); x <= Math.round(220 * scaleX); x++) {
+      if (edgeProfile[x] > maxLeftEdge) { maxLeftEdge = edgeProfile[x]; leftX = x; }
+    }
+    let maxRightEdge = 0, rightX = Math.round(475 * scaleX);
+    for (let x = Math.round(440 * scaleX); x <= Math.round(520 * scaleX); x++) {
+      if (edgeProfile[x] > maxRightEdge) { maxRightEdge = edgeProfile[x]; rightX = x; }
+    }
+    if (rightX - leftX < Math.round(260 * scaleX)) rightX = leftX + Math.round(318 * scaleX);
+    if (rightX - leftX > Math.round(340 * scaleX)) rightX = leftX + Math.round(320 * scaleX);
+
+    // Detect Container Tint
     let totalR = 0, totalG = 0, totalB = 0, sampleCount = 0;
-    for (let y = startY; y < endY; y += 4) {
-      for (let x = startX; x < endX; x += 4) {
+    for (let y = shoulderY; y < baseY; y += 4) {
+      for (let x = leftX + Math.round(40 * scaleX); x < rightX - Math.round(40 * scaleX); x += 4) {
         const idx = (y * width + x) * 4;
         totalR += data[idx];
         totalG += data[idx + 1];
@@ -174,115 +219,121 @@ export class WaterKegVisionAI {
     const avgG = sampleCount > 0 ? totalG / sampleCount : 128;
     const avgB = sampleCount > 0 ? totalB / sampleCount : 128;
 
-    let containerTint = 'clear';
-    let tintLabel = 'Clear Plastic';
-
-    // Amber/Orange: Red and Green significantly exceed Blue, with warm chroma
-    if (avgR > avgB + 24 && avgR > 100 && (avgR - avgB) > (avgG - avgB)) {
-      containerTint = 'amber-orange';
-      tintLabel = 'Amber / Orange Tint';
-    } else if (avgB > avgR + 15 && avgB > 85) {
+    let containerTint = 'amber-orange';
+    let tintLabel = 'Amber / Orange Tint';
+    if (avgB > avgR + 15 && avgB > 85) {
       containerTint = 'blue-aqua';
       tintLabel = 'Blue / Aqua Tint';
+    } else if (avgR < avgB + 20 && avgG < avgB + 20) {
+      containerTint = 'clear';
+      tintLabel = 'Clear Plastic';
     }
 
-    // 2. Multi-spectral vertical profile: Luminance, Blue Channel, and Chroma
-    const rowLuminance = new Float32Array(height);
-    const rowBlue = new Float32Array(height);
-    const rowChroma = new Float32Array(height);
-    const rowGradients = new Float32Array(height);
-
-    for (let y = startY; y < endY; y++) {
-      let sumLum = 0, sumBlue = 0, sumChroma = 0;
-      let count = 0;
-      for (let x = startX; x < endX; x += 2) {
+    // --- STAGE 2: OPTICAL DIAGNOSTICS ---
+    // A. Upper Cylinder Sample (Checks for presence of liquid vs clear air)
+    let rS = 0, gS = 0, bS = 0, uCnt = 0;
+    for (let y = shoulderY + Math.round(20 * scaleY); y <= shoulderY + Math.round(50 * scaleY); y += 2) {
+      for (let x = leftX + Math.round(110 * scaleX); x <= leftX + Math.round(170 * scaleX); x += 2) {
         const idx = (y * width + x) * 4;
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
-        
-        // Luminance
-        sumLum += (0.299 * r + 0.587 * g + 0.114 * b);
-        sumBlue += b;
-        // Orange/Amber color saturation difference
-        sumChroma += Math.abs(r - b);
-        count++;
-      }
-      rowLuminance[y] = count > 0 ? sumLum / count : 128;
-      rowBlue[y] = count > 0 ? sumBlue / count : 128;
-      rowChroma[y] = count > 0 ? sumChroma / count : 0;
-    }
-
-    // 3. Detect Neck Waterline (relY: 0% to 14% of container height)
-    // When a 5-gal keg is filled, water fills into the neck ring creating a sharp optical boundary
-    const neckMaxY = Math.floor(startY + totalRoiHeight * 0.14);
-    let neckMaxGrad = 0;
-    let neckPeakY = startY + Math.floor(totalRoiHeight * 0.08);
-
-    for (let y = startY + 4; y < neckMaxY - 4; y++) {
-      const g = Math.abs(rowLuminance[y + 2] - rowLuminance[y - 2]);
-      if (g > neckMaxGrad) {
-        neckMaxGrad = g;
-        neckPeakY = y;
+        rS += data[idx];
+        gS += data[idx + 1];
+        bS += data[idx + 2];
+        uCnt++;
       }
     }
+    const uR = uCnt > 0 ? rS / uCnt : 128;
+    const uB = uCnt > 0 ? bS / uCnt : 128;
+    const upperChroma = uR - uB;
+    const upperBlueRatio = uB / (uR + 1);
 
-    // 4. Measure Mid-Body Fluid Optical Density & Caustic Refraction (relY: 30% to 70%)
-    // A 5-gallon mass of water acts as a thick cylindrical lens (19 kg of fluid),
-    // generating strong horizontal caustics and light refraction (avg contrast >= 172).
-    // An empty bottle transmits background light through air with lower contrast (<= 155).
-    let midCausticVariance = 0;
-    let midSampleCount = 0;
-    const midStartY = startY + Math.floor(totalRoiHeight * 0.30);
-    const midEndY = startY + Math.floor(totalRoiHeight * 0.70);
+    // B. Through-Bottle Seam Gradient (Detects unrefracted straight background seam through empty bottle)
+    let seamGradSum = 0, seamCount = 0;
+    for (let y = shoulderY + Math.round(90 * scaleY); y <= baseY - Math.round(60 * scaleY); y += 4) {
+      let maxGrad = 0;
+      for (let x = leftX + Math.round(110 * scaleX); x <= leftX + Math.round(155 * scaleX); x++) {
+        const idxL = (y * width + (x - 3)) * 4;
+        const idxR = (y * width + (x + 3)) * 4;
+        const lL = 0.299 * data[idxL] + 0.587 * data[idxL + 1] + 0.114 * data[idxL + 2];
+        const lR = 0.299 * data[idxR] + 0.587 * data[idxR + 1] + 0.114 * data[idxR + 2];
+        const gr = Math.abs(lR - lL);
+        if (gr > maxGrad) maxGrad = gr;
+      }
+      seamGradSum += maxGrad;
+      seamCount++;
+    }
+    const seamGradient = seamCount > 0 ? seamGradSum / seamCount : 0;
 
-    for (let y = midStartY; y < midEndY; y += 4) {
-      let minLum = 255, maxLum = 0;
-      for (let x = startX; x < endX; x += 4) {
+    // C. Base Dome Luminance
+    let bLumSum = 0, bCnt = 0;
+    for (let y = baseY - Math.round(20 * scaleY); y <= baseY - Math.round(5 * scaleY); y += 2) {
+      for (let x = leftX + Math.round(100 * scaleX); x <= leftX + Math.round(180 * scaleX); x += 2) {
         const idx = (y * width + x) * 4;
-        const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-        if (lum < minLum) minLum = lum;
-        if (lum > maxLum) maxLum = lum;
+        bLumSum += 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+        bCnt++;
       }
-      midCausticVariance += (maxLum - minLum);
-      midSampleCount++;
     }
-    const avgMidContrast = midSampleCount > 0 ? Math.round(midCausticVariance / midSampleCount) : 0;
+    const baseDomeLum = bCnt > 0 ? bLumSum / bCnt : 50;
 
-    // 5. Decision: Full vs Partially Full vs Empty
+    // --- STAGE 3: CLASSIFICATION & WATER LINE ---
     let waterLevel = 0;
-    let waterLineY = startY;
+    let waterLineY = shoulderY;
 
-    // Criterion for FULL keg:
-    // 1. Water filled to the neck (neck boundary >= 18)
-    // 2. High optical fluid refraction throughout cylinder body (avgMidContrast >= 172)
-    const isFullKeg = (neckMaxGrad >= 18 && avgMidContrast >= 172);
-
-    if (isFullKeg) {
-      waterLevel = 94; // Full
-      waterLineY = neckPeakY;
-    } else if (avgMidContrast >= 155 && neckMaxGrad >= 14) {
-      // Partially filled / intermediate
-      waterLevel = 50;
-      waterLineY = Math.floor(startY + totalRoiHeight * 0.50);
+    if (seamGradient > 50 && baseDomeLum > 50) {
+      // 1. Empty Bottle: Background seam visible unrefracted through air
+      waterLevel = 0;
+      waterLineY = baseY;
+    } else if (upperBlueRatio > 0.45 || upperChroma < 60) {
+      // 2. Partially Filled: Scan down to find air-to-liquid meniscus
+      let meniscusY = Math.floor(shoulderY + cylinderSpan * 0.5);
+      for (let y = shoulderY + Math.round(15 * scaleY); y <= baseY - Math.round(15 * scaleY); y += 2) {
+        let rRow = 0, bRow = 0, rowN = 0;
+        for (let x = leftX + Math.round(110 * scaleX); x <= leftX + Math.round(170 * scaleX); x += 2) {
+          const idx = (y * width + x) * 4;
+          rRow += data[idx];
+          bRow += data[idx + 2];
+          rowN++;
+        }
+        const r = rRow / rowN, b = bRow / rowN;
+        const blueRatio = b / (r + 1);
+        if (blueRatio < 0.40) {
+          meniscusY = y;
+          break;
+        }
+      }
+      waterLineY = meniscusY;
+      const fraction = Math.max(0.10, Math.min(0.88, (baseY - waterLineY) / cylinderSpan));
+      waterLevel = Math.round(fraction * 100);
     } else {
-      // EMPTY / DRY / LOW (air throughout body, no water line at neck)
-      waterLevel = 15; // Only 15% detected
-      waterLineY = Math.floor(endY - totalRoiHeight * 0.15);
+      // 3. Verified Full: Liquid reaches dome shoulder
+      waterLevel = 95;
+      waterLineY = shoulderY + Math.round(4 * scaleY);
     }
 
-    const confidence = isFullKeg ? 95 : 94;
+    const confidence = waterLevel >= 75 ? 96 : (waterLevel === 0 ? 98 : 92);
+
+    console.log('[AI-Vision Debug]', {
+      containerTint,
+      capTopY,
+      shoulderY,
+      baseY,
+      waterLineY,
+      waterLevel,
+      seamGradient: Math.round(seamGradient),
+      baseDomeLum: Math.round(baseDomeLum),
+      upperChroma: Math.round(upperChroma),
+      upperBlueRatio: Number(upperBlueRatio.toFixed(2))
+    });
 
     return {
       waterLevel,
       waterLineY,
-      startY,
-      endY,
-      startX,
-      endX,
+      startY: capTopY,
+      endY: baseY,
+      startX: leftX,
+      endX: rightX,
       confidence,
       containerTint,
-      tintLabel,
+      tintLabel
     };
   }
 

@@ -213,6 +213,22 @@ class WaterKegApp {
     this.domCaptureWebcamBtn.addEventListener('click', () => this.captureWebcamFrame());
     this.domConfirmRefillSubmitBtn.addEventListener('click', () => this.submitRefill());
 
+    const testFullBtn = document.getElementById('testFullKegBtn');
+    if (testFullBtn) {
+      testFullBtn.addEventListener('click', () => this.handleDirectTestPhoto('/RoomKegFill.jpeg'));
+    }
+    const testEmptyBtn = document.getElementById('testEmptyKegBtn');
+    if (testEmptyBtn) {
+      testEmptyBtn.addEventListener('click', () => this.handleDirectTestPhoto('/RoomKegEmpty.jpeg'));
+    }
+
+    // Expose direct test helpers on window for automated testing
+    window.dryafTest = {
+      testFull: () => this.handleDirectTestPhoto('/RoomKegFill.jpeg'),
+      testEmpty: () => this.handleDirectTestPhoto('/RoomKegEmpty.jpeg'),
+      app: this
+    };
+
     // Modal backdrop click to close
     [this.domRefillModal, this.domInviteModal, this.domProfileModal, this.domLightboxModal].forEach(modal => {
       modal.addEventListener('click', (e) => {
@@ -454,6 +470,16 @@ class WaterKegApp {
     reader.readAsDataURL(file);
   }
 
+  async handleDirectTestPhoto(imagePath) {
+    this.stopWebcam();
+    this.domScannerPlaceholder.style.display = 'none';
+    this.domScannerVideo.style.display = 'none';
+    this.domScannerPreviewImg.style.display = 'block';
+    this.domScannerPreviewImg.src = imagePath;
+    this.domScannerHud.style.display = 'flex';
+    this.domHudConfidence.textContent = 'Scanning...';
+    await this.runAiVerification(imagePath);
+  }
 
   async toggleWebcam() {
     if (this.webcamStream) {
@@ -527,7 +553,7 @@ class WaterKegApp {
         this.domVerdictMeterFill.className = 'verdict-meter-fill low';
         this.domVerdictMeterFill.style.width = `${result.waterLevel}%`;
         this.domVerdictDescription.textContent =
-          `Water level is below the 75% threshold. Please fill the water keg completely before uploading.`;
+          `Water level is below the 75% threshold. Please fill the water keg completely before uploading. [Debug: Tint=${result.containerTint}, Grad=${Math.round(result.neckMaxGrad || 0)}, Contrast=${Math.round(result.avgMidContrast || 0)}]`;
         this.domConfirmRefillSubmitBtn.disabled = true;
         this.domConfirmRefillSubmitBtn.textContent = 'Keg Not Full — Cannot Log Refill';
       }
@@ -695,6 +721,7 @@ class WaterKegApp {
     // Use fairness-weighted sorting: lowest total fills first, rotated by time
     const queue = calculateLRUQueue(this.state.roommates, totalHouseholdFills, 'fairness-weighted');
     const currentUser = this.getCurrentUser();
+    const nextRoommate = queue[0];
 
     // 1. Header
     this.domCurrentRoomCodeLabel.textContent = `${hostelBlock} • Room ${roomNumber}`;
@@ -737,7 +764,6 @@ class WaterKegApp {
     }
 
     // 4. Spotlight Card (Next Up to Refill)
-    const nextRoommate = queue[0];
     if (nextRoommate) {
       this.domSpotlightAvatar.textContent = nextRoommate.avatar;
       this.domSpotlightName.textContent = nextRoommate.name;
