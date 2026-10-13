@@ -311,6 +311,12 @@ export class SyncManager {
             reported: !!log.reported,
             reportedBy: log.reportedBy || null,
             reportedAt: log.reportedAt || null,
+            reports: Array.isArray(log.reports) ? log.reports.slice(0, 10).map(r => ({
+              userId: r.userId || '',
+              userName: r.userName || 'Anonymous Roommate',
+              timestamp: r.timestamp || new Date().toISOString()
+            })) : [],
+            penaltyApplied: typeof log.penaltyApplied === 'number' ? log.penaltyApplied : 0,
             photoUrl
           };
         });

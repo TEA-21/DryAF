@@ -991,6 +991,47 @@ body {
   transform: translate(-1px, -1px);
 }
 
+.btn-report.voted {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: var(--ink-border-sm);
+  box-shadow: 1px 1px 0px var(--ink-black);
+  cursor: default;
+  opacity: 0.85;
+}
+
+.btn-report.voted:hover {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  transform: none;
+}
+
+.badge-disputed-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 2px solid #b45309;
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-comic);
+  font-weight: 800;
+  text-transform: uppercase;
+  animation: pulse-dispute 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dispute {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.history-card.disputing {
+  border-color: #f59e0b;
+  background: rgba(254, 243, 199, 0.3);
+}
+
 .history-card.reported {
   opacity: 0.55;
   border-style: dashed;

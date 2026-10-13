@@ -440,6 +440,61 @@
       </div>
     </div>
 
+    <!-- ====================================================================
+         MODAL 5: 3-PERSON CONSENSUS TRIBUNAL (CALL BLUFF)
+         ==================================================================== -->
+    <div class="modal-backdrop" id="tribunalModal">
+      <div class="modal-window" style="max-width: 480px;">
+        <div class="modal-header">
+          <h2 class="modal-title">🚩 CALL BLUFF TRIBUNAL</h2>
+          <button class="btn-icon" id="closeTribunalModalBtn">✕</button>
+        </div>
+
+        <div style="padding: 8px 0;">
+          <div class="spotlight-urgency urgent" style="margin-bottom: 12px; font-size: 0.85rem; padding: 6px 12px;">
+            ⚠️ ACCUSATION OF FRAUDULENT WATER
+          </div>
+
+          <p id="tribunalModalAuthorPrompt" style="font-family: var(--font-comic); font-weight: 800; font-size: 1.05rem; margin-bottom: 6px; color: var(--text-primary);">
+            Challenge refill by <span id="tribunalAuthorName" style="color: var(--hazard-red);">Captain Tom</span>?
+          </p>
+
+          <p id="tribunalModalDescription" style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.4;">
+            Are you sure this photo is fake, old, or recycled water?
+          </p>
+
+          <div id="tribunalVoteProgressCard" style="background: var(--bg-surface-card); border: var(--ink-border-sm); box-shadow: 2px 2px 0px var(--ink-black); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-family: var(--font-comic); font-weight: 800; font-size: 0.82rem; text-transform: uppercase;">
+                Consensus Votes:
+              </span>
+              <span id="tribunalVoteCountBadge" class="badge-disputed-progress" style="font-size: 0.78rem;">
+                0 / 3 VOTES
+              </span>
+            </div>
+            <div id="tribunalVotersList" style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted);">
+              No votes cast yet
+            </div>
+          </div>
+
+          <div id="tribunalPenaltyWarningCard" style="background: #fef2f2; border: 2px dashed #ef4444; border-radius: var(--radius-sm); padding: 10px; margin-bottom: 18px;">
+            <p style="font-size: 0.82rem; color: #991b1b; font-weight: 700; margin: 0; line-height: 1.35;">
+              ⚖️ <strong>Tribunal Penalty:</strong> If 3 roommates call bluff, the refill is revoked AND the author suffers an automatic <strong>-2 fills penalty</strong>!
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-comic btn-comic-danger" id="confirmTribunalVoteBtn" style="flex: 1;">
+              🚩 CAST BLUFF VOTE
+            </button>
+            <button class="btn-comic btn-comic-secondary" id="cancelTribunalVoteBtn" style="flex: 1;">
+              CANCEL
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div class="toast-container" id="toastContainer"></div>
   </div>

@@ -24,10 +24,10 @@ export function calculateLRUQueue(roommates = [], totalHouseholdFills = 0, queue
     const elapsedHours = hasFilled ? Math.floor(elapsedMs / (1000 * 60 * 60)) : Infinity;
 
     // Fill deficit compared to household fair share
-    const totalFills = r.totalFills || 0;
+    const totalFills = typeof r.totalFills === 'number' ? r.totalFills : (r.totalFills || 0);
     const deficit = Number((fairShare - totalFills).toFixed(1));
     const fillPercentage = totalHouseholdFills > 0 
-      ? Math.round((totalFills / totalHouseholdFills) * 100) 
+      ? Math.max(0, Math.round((totalFills / totalHouseholdFills) * 100)) 
       : 0;
 
     // Determine Urgency / Push Level
@@ -37,6 +37,9 @@ export function calculateLRUQueue(roommates = [], totalHouseholdFills = 0, queue
     if (isAway) {
       urgencyLevel = 'away';
       urgencyLabel = 'Away / Snoozed';
+    } else if (totalFills < 0) {
+      urgencyLevel = 'urgent';
+      urgencyLabel = `Water Debtor (${totalFills} Fills)`;
     } else if (!hasFilled || totalFills === 0) {
       urgencyLevel = 'urgent';
       urgencyLabel = 'Never Filled (Priority)';

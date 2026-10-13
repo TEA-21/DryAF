@@ -145,6 +145,17 @@ class WaterKegApp {
     this.domLightboxImage = document.getElementById('lightboxImage');
     this.domLightboxDetails = document.getElementById('lightboxDetails');
 
+    // Tribunal Modal (3-Person Consensus Call Bluff)
+    this.domTribunalModal = document.getElementById('tribunalModal');
+    this.domCloseTribunalModalBtn = document.getElementById('closeTribunalModalBtn');
+    this.domCancelTribunalVoteBtn = document.getElementById('cancelTribunalVoteBtn');
+    this.domConfirmTribunalVoteBtn = document.getElementById('confirmTribunalVoteBtn');
+    this.domTribunalAuthorName = document.getElementById('tribunalAuthorName');
+    this.domTribunalModalDescription = document.getElementById('tribunalModalDescription');
+    this.domTribunalVoteCountBadge = document.getElementById('tribunalVoteCountBadge');
+    this.domTribunalVotersList = document.getElementById('tribunalVotersList');
+    this.activeTribunalLogId = null;
+
     // Toast
     this.domToastContainer = document.getElementById('toastContainer');
   }
@@ -231,6 +242,32 @@ class WaterKegApp {
       }
     });
 
+    // Tribunal Modal Events
+    if (this.domCloseTribunalModalBtn) {
+      this.domCloseTribunalModalBtn.addEventListener('click', () => this.closeTribunalModal());
+    }
+    if (this.domCancelTribunalVoteBtn) {
+      this.domCancelTribunalVoteBtn.addEventListener('click', () => this.closeTribunalModal());
+    }
+    if (this.domConfirmTribunalVoteBtn) {
+      this.domConfirmTribunalVoteBtn.addEventListener('click', () => this.executeTribunalVote());
+    }
+
+    // Rock-solid event delegation for Call Bluff tribunal buttons in history feed
+    if (this.domHistoryFeedContainer) {
+      this.domHistoryFeedContainer.addEventListener('click', (e) => {
+        const reportBtn = e.target.closest('.btn-report');
+        if (reportBtn && !reportBtn.disabled && !reportBtn.classList.contains('voted')) {
+          e.preventDefault();
+          e.stopPropagation();
+          const logId = reportBtn.dataset.logId || reportBtn.getAttribute('data-log-id');
+          if (logId) {
+            this.handleReportRefill(logId);
+          }
+        }
+      });
+    }
+
     // Verification Inputs
     this.domPhotoFileInput.addEventListener('change', (e) => this.handlePhotoSelected(e));
     this.domToggleWebcamBtn.addEventListener('click', () => this.toggleWebcam());
@@ -254,12 +291,14 @@ class WaterKegApp {
     };
 
     // Modal backdrop click to close
-    [this.domRefillModal, this.domInviteModal, this.domProfileModal, this.domLightboxModal].forEach(modal => {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          this.closeAllModals();
-        }
-      });
+    [this.domRefillModal, this.domInviteModal, this.domProfileModal, this.domLightboxModal, this.domTribunalModal].forEach(modal => {
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            this.closeAllModals();
+          }
+        });
+      }
     });
   }
 
@@ -268,6 +307,7 @@ class WaterKegApp {
     this.closeInviteModal();
     this.closeProfileModal();
     this.closeLightboxModal();
+    this.closeTribunalModal();
   }
 
   showToast(message, type = 'info') {
@@ -935,24 +975,149 @@ class WaterKegApp {
     this.showToast(`🎉 OASIS RESTORED! ${roommate.name} saved the dorm from shriveling!`, 'success');
   }
 
-  // --- REPORT OLD / FRAUDULENT IMAGE ---
-  handleReportRefill(logId) {
-    const log = this.state.refillLogs.find(l => l.id === logId);
-    if (!log || log.reported) return;
+  getReportQuorumThreshold() {
+    const totalMembers = (this.state && Array.isArray(this.state.roommates)) ? this.state.roommates.length : 4;
+    // Standard minimum of 3 reports, adaptively scaled for small households (<= 3 roommates)
+    return Math.min(3, Math.max(1, totalMembers - 1));
+  }
 
-    if (confirm(`CALL BLUFF? Report this image as fake or old water? This will deduct 1 fill count from ${log.roommateName}.`)) {
-      // Find the roommate and decrement their count
+  // --- REPORT OLD / FRAUDULENT IMAGE (3-PERSON CONSENSUS TRIBUNAL) ---
+  handleReportRefill(logId) {
+    const log = this.state.refillLogs ? this.state.refillLogs.find(l => l.id === logId) : null;
+    if (!log) {
+      this.showToast('Refill log not found in the chronicles.', 'warning');
+      return;
+    }
+    if (log.reported) {
+      this.showToast('This refill has already been voided by the tribunal.', 'info');
+      return;
+    }
+
+    const currentUser = this.getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      this.showToast('Please select or enter your roommate profile before calling bluff!', 'urgent');
+      this.openProfileModal();
+      return;
+    }
+
+    if (currentUser.id === log.roommateId) {
+      this.showToast('You cannot call bluff on your own refill proof!', 'urgent');
+      return;
+    }
+
+    if (!Array.isArray(log.reports)) {
+      log.reports = [];
+    }
+
+    if (log.reports.some(r => r.userId === currentUser.id)) {
+      this.showToast('You have already cast your bluff vote for this refill!', 'warning');
+      return;
+    }
+
+    this.activeTribunalLogId = logId;
+    this.openTribunalModal(log);
+  }
+
+  openTribunalModal(log) {
+    if (!this.domTribunalModal || !log) return;
+
+    const threshold = this.getReportQuorumThreshold();
+    const currentVotes = Array.isArray(log.reports) ? log.reports.length : 0;
+    const isReachingQuorum = (currentVotes + 1) >= threshold;
+
+    if (this.domTribunalAuthorName) {
+      this.domTribunalAuthorName.textContent = log.roommateName;
+    }
+    if (this.domTribunalVoteCountBadge) {
+      this.domTribunalVoteCountBadge.textContent = `${currentVotes} / ${threshold} VOTES`;
+    }
+    if (this.domTribunalVotersList) {
+      this.domTribunalVotersList.textContent = currentVotes > 0 
+        ? `Voters: ${log.reports.map(r => r.userName).join(', ')}` 
+        : 'No votes cast yet';
+    }
+    if (this.domTribunalModalDescription) {
+      this.domTribunalModalDescription.textContent = isReachingQuorum
+        ? `⚠️ FINAL DECISIVE VOTE: You are voting as ${this.getCurrentUser().name}. Casting this vote will reach ${threshold}/${threshold} quorum, officially VOID the refill, and hit ${log.roommateName} with an automatic -2 fills penalty!`
+        : `You are voting as ${this.getCurrentUser().name}. Are you sure this photo is fake, old, or recycled water? (${threshold - currentVotes} more votes needed to void).`;
+    }
+
+    this.domTribunalModal.classList.add('active');
+  }
+
+  closeTribunalModal() {
+    if (this.domTribunalModal) {
+      this.domTribunalModal.classList.remove('active');
+    }
+    this.activeTribunalLogId = null;
+  }
+
+  executeTribunalVote() {
+    if (!this.activeTribunalLogId) return;
+    const logId = this.activeTribunalLogId;
+    const log = this.state.refillLogs ? this.state.refillLogs.find(l => l.id === logId) : null;
+    if (!log || log.reported) {
+      this.closeTribunalModal();
+      return;
+    }
+
+    const currentUser = this.getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      this.closeTribunalModal();
+      this.showToast('Please select your profile first!', 'urgent');
+      this.openProfileModal();
+      return;
+    }
+
+    if (!Array.isArray(log.reports)) {
+      log.reports = [];
+    }
+
+    log.reports.push({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      timestamp: new Date().toISOString()
+    });
+
+    const threshold = this.getReportQuorumThreshold();
+
+    if (log.reports.length >= threshold) {
+      // 3/3 Quorum reached! Officially void fraudulent refill.
+      log.reported = true;
+      log.reportedAt = new Date().toISOString();
+      log.reportedBy = log.reports.map(r => r.userName).join(', ');
+      log.penaltyApplied = 2;
+
+      // Revoke 1 claimed fill and apply -2 deception penalty (total: -3 fills deduction)
       const author = this.state.roommates.find(r => r.id === log.roommateId);
       if (author) {
-        author.totalFills = Math.max(0, (author.totalFills || 1) - 1);
+        const currentFills = typeof author.totalFills === 'number' ? author.totalFills : 0;
+        author.totalFills = currentFills - 3;
+        author.penalties = (author.penalties || 0) + 1;
+
+        // Roll back lastFilledAt to author's previous valid non-reported refill
+        const prevValidLog = (this.state.refillLogs || []).find(l => 
+          l.roommateId === author.id && !l.reported && l.id !== log.id
+        );
+        author.lastFilledAt = prevValidLog ? prevValidLog.timestamp : null;
       }
 
-      log.reported = true;
-      log.reportedBy = this.getCurrentUser().name;
-      log.reportedAt = new Date().toISOString();
+      // Revert keg status to empty if this fraudulent refill was the latest active fill
+      if (this.state.refillLogs && this.state.refillLogs[0]?.id === log.id) {
+        this.state.kegStatus = 'empty';
+        this.state.lastEmptiedAt = new Date().toISOString();
+        this.state.lastEmptiedBy = 'Consensus Tribunal (3/3 Bluffs)';
+      }
 
+      this.closeTribunalModal();
       this.persistState();
-      this.showToast(`🚩 BLUFF CALLED! 1 fill revoked from ${log.roommateName}.`, 'urgent');
+      this.showToast(`🚨 3/3 BLUFFS CALLED! Fraudulent refill revoked and -2 penalty applied to ${log.roommateName}!`, 'urgent');
+    } else {
+      // Quorum not yet reached: register vote and notify household
+      this.closeTribunalModal();
+      this.persistState();
+      const needed = threshold - log.reports.length;
+      this.showToast(`🚩 Bluff reported (${log.reports.length}/${threshold}). Need ${needed} more roommate vote(s) to confirm!`, 'warning');
     }
   }
 
@@ -997,7 +1162,10 @@ class WaterKegApp {
       this.domProfileModalRoom.textContent = `${this.state.hostelBlock} • Room ${this.state.roomNumber}`;
     }
     if (this.domProfileModalFills) {
-      this.domProfileModalFills.textContent = `${user.totalFills || 0} refills logged`;
+      const fills = typeof user.totalFills === 'number' ? user.totalFills : 0;
+      const strikes = user.penalties ? ` • ⚠️ ${user.penalties} Penalty Strike(s)` : '';
+      const debt = fills < 0 ? ' (IN WATER DEBT)' : '';
+      this.domProfileModalFills.textContent = `${fills} refills logged${debt}${strikes}`;
     }
 
     this.renderProfileRoommateList();
@@ -1163,7 +1331,7 @@ class WaterKegApp {
     this.domRoommatesCountBadge.textContent = `${this.state.roommates.length} Roommates`;
     this.domQueueListContainer.innerHTML = '';
 
-    const maxFills = Math.max(...this.state.roommates.map(r => r.totalFills || 0), 1);
+    const maxFills = Math.max(...this.state.roommates.map(r => typeof r.totalFills === 'number' ? r.totalFills : (r.totalFills || 0)), 1);
 
     queue.forEach((roommate, index) => {
       const card = document.createElement('div');
@@ -1171,9 +1339,22 @@ class WaterKegApp {
       const isAway = roommate.status === 'away';
       card.className = `queue-card ${rankNum === 1 && !isAway ? 'rank-1' : ''}`;
 
-      const isTopFiller = (roommate.totalFills || 0) === maxFills && roommate.totalFills > 0;
-      const isCactus = (roommate.totalFills || 0) === 0;
-      const comicBadgeTitle = rankNum === 1 ? '🔥 NEXT SACRIFICE' : isTopFiller ? '👑 OASIS SAVIOR' : isCactus ? '🌵 HUMAN CACTUS' : '💧 WATER WARRIOR';
+      const totalFills = typeof roommate.totalFills === 'number' ? roommate.totalFills : (roommate.totalFills || 0);
+      const isTopFiller = totalFills === maxFills && totalFills > 0;
+      const isDebtor = totalFills < 0;
+      const isCactus = totalFills === 0;
+      const comicBadgeTitle = isDebtor 
+        ? `💀 OASIS DEBTOR (${totalFills})` 
+        : rankNum === 1 
+          ? '🔥 NEXT SACRIFICE' 
+          : isTopFiller 
+            ? '👑 OASIS SAVIOR' 
+            : isCactus 
+              ? '🌵 HUMAN CACTUS' 
+              : '💧 WATER WARRIOR';
+
+      const debtNotice = isDebtor ? ' • ⚠️ IN WATER DEBT' : '';
+      const fillsLabel = `${totalFills} total fills (${roommate.fillPercentage}% share)${debtNotice}`;
 
       card.innerHTML = `
         <div class="queue-left">
@@ -1187,14 +1368,14 @@ class WaterKegApp {
               </span>
             </span>
             <span class="queue-user-sub">
-              Last filled: ${formatTimeAgo(roommate.lastFilledAt)} • ${roommate.totalFills || 0} total fills (${roommate.fillPercentage}% share)
+              Last filled: ${formatTimeAgo(roommate.lastFilledAt)} • ${fillsLabel}
             </span>
           </div>
         </div>
 
         <div class="queue-right">
           <div class="fairness-bar-container" title="${roommate.fillPercentage}% of household refills">
-            <div class="fairness-bar-fill" style="width: ${Math.max(8, roommate.fillPercentage)}%;"></div>
+            <div class="fairness-bar-fill" style="width: ${Math.max(4, Math.max(0, roommate.fillPercentage))}%;"></div>
           </div>
         </div>
       `;
@@ -1216,26 +1397,56 @@ class WaterKegApp {
     } else {
       logs.forEach(log => {
         const item = document.createElement('div');
-        item.className = `history-card ${log.reported ? 'reported' : ''}`;
+        const reports = Array.isArray(log.reports) ? log.reports : [];
+        const threshold = this.getReportQuorumThreshold();
+        const voteCount = reports.length;
+        const isDisputing = voteCount > 0 && !log.reported;
+
+        item.className = `history-card ${log.reported ? 'reported' : isDisputing ? 'disputing' : ''}`;
 
         const photoHtml = log.photoUrl 
           ? `<img src="${log.photoUrl}" class="history-photo-thumb" alt="Proof" title="Click to enlarge" />`
           : `<div class="history-photo-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--bg-subtle);font-size:1.2rem;">💧</div>`;
 
-        const badgeHtml = log.reported
-          ? `<span class="spotlight-urgency urgent" style="font-size:0.75rem;">⚠️ BLUFF CALLED / VOIDED</span>`
-          : `<div class="history-badge">✓ VERIFIED OASIS</div>`;
+        const isAuthor = currentUser.id && currentUser.id === log.roommateId;
+        const hasVoted = currentUser.id && reports.some(r => r.userId === currentUser.id);
 
-        const reportBtnHtml = !log.reported
-          ? `<button class="btn-report" title="Call bluff on older or duplicate photo">🚩 CALL BLUFF</button>`
-          : `<span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">Voided</span>`;
+        let badgeHtml = '';
+        let reportBtnHtml = '';
+
+        if (log.reported) {
+          badgeHtml = `<span class="spotlight-urgency urgent" style="font-size:0.75rem;">💀 VOIDED BY TRIBUNAL (${voteCount || threshold}/${threshold})</span>`;
+          reportBtnHtml = `<span style="font-size:0.75rem;color:var(--hazard-red-dark);font-weight:800;font-family:var(--font-mono);">-2 Penalty Applied</span>`;
+        } else if (isDisputing) {
+          badgeHtml = `<span class="badge-disputed-progress" style="font-size:0.75rem;">⚠️ DISPUTED (${voteCount}/${threshold})</span>`;
+          if (hasVoted) {
+            reportBtnHtml = `<button class="btn-report voted" disabled data-log-id="${log.id}" title="You voted to call bluff">✓ VOTED (${voteCount}/${threshold})</button>`;
+          } else if (isAuthor) {
+            reportBtnHtml = `<span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">Your Refill (${voteCount}/${threshold})</span>`;
+          } else {
+            reportBtnHtml = `<button class="btn-report" data-log-id="${log.id}" title="Call bluff on older or duplicate photo">🚩 CALL BLUFF (${voteCount}/${threshold})</button>`;
+          }
+        } else {
+          badgeHtml = `<div class="history-badge">✓ VERIFIED OASIS</div>`;
+          if (isAuthor) {
+            reportBtnHtml = `<span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">Your Refill</span>`;
+          } else {
+            reportBtnHtml = `<button class="btn-report" data-log-id="${log.id}" title="Call bluff on older or duplicate photo">🚩 CALL BLUFF (0/${threshold})</button>`;
+          }
+        }
+
+        const disputeDetails = isDisputing 
+          ? ` • Voters: ${reports.map(r => r.userName).join(', ')}` 
+          : log.reported && log.reportedBy 
+            ? ` • Voided by ${log.reportedBy}` 
+            : '';
 
         item.innerHTML = `
           <div class="history-left">
             ${photoHtml}
             <div class="history-details">
               <span class="history-filler">${log.roommateName} refilled the oasis</span>
-              <span class="history-time">${formatTimeAgo(log.timestamp)}</span>
+              <span class="history-time">${formatTimeAgo(log.timestamp)}${disputeDetails}</span>
             </div>
           </div>
           <div class="history-actions">
@@ -1250,14 +1461,20 @@ class WaterKegApp {
             this.openLightbox(
               log.photoUrl,
               `Refill Proof by ${log.roommateName}`,
-              `Logged: ${new Date(log.timestamp).toLocaleString()} • ${log.reported ? 'Flagged as Duplicate' : 'Verified Full'}`
+              `Logged: ${new Date(log.timestamp).toLocaleString()} • ${log.reported ? 'Voided as Fraudulent' : isDisputing ? `Disputed (${voteCount}/${threshold})` : 'Verified Full'}`
             );
           });
         }
 
-        if (!log.reported) {
-          const rBtn = item.querySelector('.btn-report');
-          rBtn.addEventListener('click', () => this.handleReportRefill(log.id));
+        if (!log.reported && !hasVoted && !isAuthor) {
+          const rBtn = item.querySelector('.btn-report:not(.voted)');
+          if (rBtn) {
+            rBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              this.handleReportRefill(log.id);
+            });
+          }
         }
 
         this.domHistoryFeedContainer.appendChild(item);
