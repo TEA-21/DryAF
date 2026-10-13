@@ -261,7 +261,7 @@ class WaterKegApp {
   }
 
   // --- SESSION & GATEKEEPER ---
-  initSessionOrGatekeeper() {
+  async initSessionOrGatekeeper() {
     // Check URL parameters e.g. ?room=B-304
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
@@ -269,15 +269,34 @@ class WaterKegApp {
     const session = SessionManager.getSession();
 
     if (session && session.roomCode) {
-      // Load room state
-      const room = this.syncManager.loadRoomState(session.roomCode);
-      if (room) {
-        this.state = room;
+      // 1. Immediately load cached room state for zero-latency UI rendering
+      const cachedRoom = this.syncManager.loadRoomState(session.roomCode);
+      if (cachedRoom) {
+        this.state = cachedRoom;
         this.state.currentUserId = session.userId;
         this.state.currentUserName = session.userName;
+        this.syncManager.subscribeToRoom(session.roomCode);
         this.showDashboard();
-        return;
       }
+
+      // 2. Fetch fresh cloud state from Firestore in background
+      try {
+        const cloudRoom = await this.syncManager.fetchRoomState(session.roomCode);
+        if (cloudRoom) {
+          this.state = {
+            ...cloudRoom,
+            currentUserId: session.userId,
+            currentUserName: session.userName
+          };
+          this.syncManager.subscribeToRoom(session.roomCode);
+          this.showDashboard();
+          return;
+        }
+      } catch (e) {
+        console.warn('Initial cloud sync error:', e);
+      }
+
+      if (cachedRoom) return;
     }
 
     // If room param in URL, prefill Join Room code
@@ -313,60 +332,106 @@ class WaterKegApp {
     }
   }
 
-  handleJoinRoomSubmit(e) {
+  async handleJoinRoomSubmit(e) {
     e.preventDefault();
     const code = this.domLoginRoomCode.value.trim().toUpperCase();
     const name = this.domLoginUserName.value.trim();
     if (!code || !name) return;
 
-    let room = this.syncManager.loadRoomState(code);
-    if (!room) {
-      // Auto-create room for that code if not existing
-      room = createDefaultRoomState(code, code, name);
+    const submitBtn = this.domJoinRoomForm.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Connecting to Oasis...';
     }
 
-    // Check if roommate exists or add new
-    let user = room.roommates.find(r => r.name.toLowerCase() === name.toLowerCase());
-    if (!user) {
-      const avatars = ['👤', '⚡', '☕', '🎧', '🌱', '🏄', '🦊'];
-      user = {
-        id: `usr-${Date.now()}`,
-        name,
-        avatar: avatars[Math.floor(Math.random() * avatars.length)],
-        lastFilledAt: null,
-        totalFills: 0,
-        status: 'active'
-      };
-      room.roommates.push(user);
+    try {
+      // 1. Fetch live room state from Firestore first (or fallback to local)
+      let room = await this.syncManager.fetchRoomState(code);
+      if (!room) {
+        // Auto-create room for that code if not existing anywhere
+        room = createDefaultRoomState(code, code, name);
+      }
+
+      // 2. Check if roommate already exists in the room, or register new
+      let user = room.roommates.find(r => r.name.toLowerCase() === name.toLowerCase());
+      if (!user) {
+        const avatars = ['👤', '⚡', '☕', '🎧', '🌱', '🏄', '🦊'];
+        user = {
+          id: `usr-${Date.now()}`,
+          name,
+          avatar: avatars[Math.floor(Math.random() * avatars.length)],
+          lastFilledAt: null,
+          totalFills: 0,
+          status: 'active'
+        };
+        room.roommates.push(user);
+      }
+
+      // 3. Bind active user identity to this device session
+      room.currentUserId = user.id;
+      room.currentUserName = user.name;
+      this.state = room;
+
+      SessionManager.setSession(room.roomCode, user.id, user.name);
+
+      // 4. Save to cloud so all other roommates see this new member
+      await this.syncManager.syncState(room);
+
+      // 5. Subscribe to real-time changes
+      this.syncManager.subscribeToRoom(room.roomCode);
+
+      this.showDashboard();
+      this.showToast(`Welcome to ${room.hostelBlock} • Room ${room.roomNumber}, ${user.name}!`, 'success');
+    } catch (err) {
+      console.error('Error joining room:', err);
+      this.showToast('Could not join room. Please check your network and try again.', 'urgent');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
     }
-
-    room.currentUserId = user.id;
-    room.currentUserName = user.name;
-    this.state = room;
-
-    SessionManager.setSession(room.roomCode, user.id, user.name);
-    this.persistState();
-    this.showDashboard();
-    this.showToast(`Welcome to ${room.hostelBlock} • Room ${room.roomNumber}, ${user.name}!`, 'success');
   }
 
-  handleCreateRoomSubmit(e) {
+  async handleCreateRoomSubmit(e) {
     e.preventDefault();
     const block = this.domNewHostelBlock.value.trim();
     const roomNum = this.domNewRoomNumber.value.trim();
     const creator = this.domNewCreatorName.value.trim();
     if (!block || !roomNum || !creator) return;
 
-    const room = createDefaultRoomState(block, roomNum, creator);
-    this.state = room;
+    const submitBtn = this.domCreateRoomForm.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Founding Oasis...';
+    }
 
-    SessionManager.setSession(room.roomCode, room.currentUserId, room.currentUserName);
-    this.persistState();
-    this.showDashboard();
-    this.showToast(`Room created for ${room.hostelBlock} • Room ${room.roomNumber}!`, 'success');
+    try {
+      const room = createDefaultRoomState(block, roomNum, creator);
+      this.state = room;
+
+      SessionManager.setSession(room.roomCode, room.currentUserId, room.currentUserName);
+
+      await this.syncManager.syncState(room);
+      this.syncManager.subscribeToRoom(room.roomCode);
+
+      this.showDashboard();
+      this.showToast(`Room created for ${room.hostelBlock} • Room ${room.roomNumber}!`, 'success');
+    } catch (err) {
+      console.error('Error creating room:', err);
+      this.showToast('Could not create room. Please try again.', 'urgent');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
+    }
   }
 
   handleLeaveRoom() {
+    this.syncManager.unsubscribe();
     SessionManager.clearSession();
     this.state = null;
 
@@ -393,7 +458,16 @@ class WaterKegApp {
 
   handleRemoteUpdate(remoteState) {
     if (remoteState && this.state && remoteState.roomCode === this.state.roomCode) {
-      this.state = { ...this.state, ...remoteState };
+      // Strictly preserve the local device's active user identity
+      const currentUserId = this.state.currentUserId;
+      const currentUserName = this.state.currentUserName;
+
+      this.state = {
+        ...this.state,
+        ...remoteState,
+        currentUserId,
+        currentUserName
+      };
       this.render();
       this.showToast('Room updated with roommate activity', 'info');
     }

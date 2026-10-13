@@ -123,13 +123,13 @@ export class WaterKegVisionAI {
     this.renderAnnotationOverlay(ctx, width, height, analysis, isFull);
     const annotatedImage = canvas.toDataURL('image/jpeg', 0.88);
 
-    // Create compressed raw thumbnail for storage
+    // Create compressed raw thumbnail for storage and cloud sync
     const thumbCanvas = document.createElement('canvas');
-    thumbCanvas.width = 400;
-    thumbCanvas.height = Math.round((height * 400) / width);
+    thumbCanvas.width = 240;
+    thumbCanvas.height = Math.round((height * 240) / width);
     const thumbCtx = thumbCanvas.getContext('2d');
     thumbCtx.drawImage(img, 0, 0, thumbCanvas.width, thumbCanvas.height);
-    const compressedImage = thumbCanvas.toDataURL('image/jpeg', 0.82);
+    const compressedImage = thumbCanvas.toDataURL('image/jpeg', 0.65);
 
     return {
       verified: isFull,
