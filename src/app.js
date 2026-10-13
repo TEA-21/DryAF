@@ -41,6 +41,18 @@ class WaterKegApp {
     this.domNewRoomNumber = document.getElementById('newRoomNumber');
     this.domNewCreatorName = document.getElementById('newCreatorName');
 
+    // Dedicated Invite Join Elements
+    this.domStandardAuthSection = document.getElementById('standardAuthSection');
+    this.domInviteJoinSection = document.getElementById('inviteJoinSection');
+    this.domInviteBannerRoomName = document.getElementById('inviteBannerRoomName');
+    this.domInviteBannerRoomCode = document.getElementById('inviteBannerRoomCode');
+    this.domInviteClaimForm = document.getElementById('inviteClaimForm');
+    this.domInviteExistingRoommatesGroup = document.getElementById('inviteExistingRoommatesGroup');
+    this.domInviteRoommateChipsList = document.getElementById('inviteRoommateChipsList');
+    this.domInviteCustomUserName = document.getElementById('inviteCustomUserName');
+    this.domBtnConfirmInviteJoin = document.getElementById('btnConfirmInviteJoin');
+    this.domBtnSwitchToStandardAuth = document.getElementById('btnSwitchToStandardAuth');
+
     // Dashboard Header
     this.domCurrentRoomCodeLabel = document.getElementById('currentRoomCodeLabel');
     this.domSwitchRoomBtn = document.getElementById('switchRoomBtn');
@@ -122,6 +134,9 @@ class WaterKegApp {
     this.domProfileModalRoom = document.getElementById('profileModalRoom');
     this.domProfileModalFills = document.getElementById('profileModalFills');
     this.domProfileLogoutBtn = document.getElementById('profileLogoutBtn');
+    this.domProfileRoommateList = document.getElementById('profileRoommateList');
+    this.domNewRoommateProfileName = document.getElementById('newRoommateProfileName');
+    this.domAddNewProfileBtn = document.getElementById('addNewProfileBtn');
 
     // Lightbox Modal
     this.domLightboxModal = document.getElementById('lightboxModal');
@@ -165,11 +180,17 @@ class WaterKegApp {
     }
     this.updateThemeIcons(document.documentElement.getAttribute('data-theme'));
 
-    // Auth Tabs
+    // Auth Tabs & Invite Claim
     this.domTabJoinRoomBtn.addEventListener('click', () => this.switchAuthTab('join'));
     this.domTabCreateRoomBtn.addEventListener('click', () => this.switchAuthTab('create'));
     this.domJoinRoomForm.addEventListener('submit', (e) => this.handleJoinRoomSubmit(e));
     this.domCreateRoomForm.addEventListener('submit', (e) => this.handleCreateRoomSubmit(e));
+    if (this.domInviteClaimForm) {
+      this.domInviteClaimForm.addEventListener('submit', (e) => this.handleInviteClaimSubmit(e));
+    }
+    if (this.domBtnSwitchToStandardAuth) {
+      this.domBtnSwitchToStandardAuth.addEventListener('click', () => this.switchToStandardAuth());
+    }
 
     // Dashboard navigation
     this.domSwitchRoomBtn.addEventListener('click', () => this.handleLeaveRoom());
@@ -197,6 +218,9 @@ class WaterKegApp {
         this.closeProfileModal();
         this.handleLeaveRoom();
       });
+    }
+    if (this.domAddNewProfileBtn) {
+      this.domAddNewProfileBtn.addEventListener('click', () => this.handleAddNewProfileFromModal());
     }
 
     // Lightbox
@@ -262,24 +286,51 @@ class WaterKegApp {
 
   // --- SESSION & GATEKEEPER ---
   async initSessionOrGatekeeper() {
-    // Check URL parameters e.g. ?room=B-304
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
-
     const session = SessionManager.getSession();
 
-    if (session && session.roomCode) {
-      // 1. Immediately load cached room state for zero-latency UI rendering
+    if (roomParam) {
+      const cleanParam = roomParam.trim().toUpperCase();
+
+      // Check if this device ALREADY has an active verified session for this exact room
+      if (session && session.roomCode && session.roomCode.toUpperCase() === cleanParam && session.userId) {
+        try {
+          const cloudRoom = await this.syncManager.fetchRoomState(cleanParam);
+          if (cloudRoom && Array.isArray(cloudRoom.roommates) && cloudRoom.roommates.some(r => r.id === session.userId)) {
+            this.state = {
+              ...cloudRoom,
+              currentUserId: session.userId,
+              currentUserName: session.userName
+            };
+            this.syncManager.subscribeToRoom(cleanParam);
+            this.showDashboard();
+            this.showToast(`Welcome back to the Oasis, ${session.userName}!`, 'info');
+            return;
+          }
+        } catch (e) {
+          console.warn('Error checking existing room session:', e);
+        }
+      }
+
+      // If no verified session matching this invited room, show the Dedicated Invite Acceptance View!
+      await this.showInviteJoinView(cleanParam);
+      return;
+    }
+
+    // Normal launch without ?room in URL:
+    if (session && session.roomCode && session.userId) {
       const cachedRoom = this.syncManager.loadRoomState(session.roomCode);
       if (cachedRoom) {
-        this.state = cachedRoom;
-        this.state.currentUserId = session.userId;
-        this.state.currentUserName = session.userName;
+        this.state = {
+          ...cachedRoom,
+          currentUserId: session.userId,
+          currentUserName: session.userName
+        };
         this.syncManager.subscribeToRoom(session.roomCode);
         this.showDashboard();
       }
 
-      // 2. Fetch fresh cloud state from Firestore in background
       try {
         const cloudRoom = await this.syncManager.fetchRoomState(session.roomCode);
         if (cloudRoom) {
@@ -299,12 +350,140 @@ class WaterKegApp {
       if (cachedRoom) return;
     }
 
-    // If room param in URL, prefill Join Room code
-    if (roomParam) {
-      this.domLoginRoomCode.value = roomParam.toUpperCase();
-    }
+    this.switchToStandardAuth();
+    this.showLogin();
+  }
+
+  async showInviteJoinView(roomCode) {
+    const cleanCode = roomCode.toUpperCase();
+    if (this.domStandardAuthSection) this.domStandardAuthSection.style.display = 'none';
+    if (this.domInviteJoinSection) this.domInviteJoinSection.style.display = 'block';
+    if (this.domLoginRoomCode) this.domLoginRoomCode.value = cleanCode;
+
+    if (this.domInviteBannerRoomName) this.domInviteBannerRoomName.textContent = 'Locating Oasis in the wasteland...';
+    if (this.domInviteBannerRoomCode) this.domInviteBannerRoomCode.textContent = cleanCode;
+    if (this.domInviteExistingRoommatesGroup) this.domInviteExistingRoommatesGroup.style.display = 'none';
+    if (this.domInviteRoommateChipsList) this.domInviteRoommateChipsList.innerHTML = '';
+    if (this.domInviteCustomUserName) this.domInviteCustomUserName.value = '';
 
     this.showLogin();
+
+    try {
+      const room = await this.syncManager.fetchRoomState(cleanCode);
+      if (room) {
+        this.currentInviteRoom = room;
+        if (this.domInviteBannerRoomName) {
+          this.domInviteBannerRoomName.textContent = `${room.hostelBlock} • Room ${room.roomNumber}`;
+        }
+        if (this.domInviteBannerRoomCode) {
+          this.domInviteBannerRoomCode.textContent = room.roomCode;
+        }
+
+        // Populate existing roommate chips so joining roommate can claim their spot if creator pre-listed them
+        if (Array.isArray(room.roommates) && room.roommates.length > 0) {
+          if (this.domInviteExistingRoommatesGroup) this.domInviteExistingRoommatesGroup.style.display = 'block';
+          if (this.domInviteRoommateChipsList) {
+            this.domInviteRoommateChipsList.innerHTML = '';
+            room.roommates.forEach(roommate => {
+              const chip = document.createElement('button');
+              chip.type = 'button';
+              chip.className = 'invite-chip';
+              chip.innerHTML = `<span>${roommate.avatar || '👤'}</span> <span>${roommate.name}</span>`;
+              chip.addEventListener('click', () => {
+                this.domInviteRoommateChipsList.querySelectorAll('.invite-chip').forEach(c => c.classList.remove('selected'));
+                chip.classList.add('selected');
+                if (this.domInviteCustomUserName) {
+                  this.domInviteCustomUserName.value = roommate.name;
+                }
+              });
+              this.domInviteRoommateChipsList.appendChild(chip);
+            });
+          }
+        }
+      } else {
+        // Room not found in cloud, fall back to standard join form with code prefilled
+        this.switchToStandardAuth();
+        if (this.domLoginRoomCode) this.domLoginRoomCode.value = cleanCode;
+        this.showToast(`Oasis code ${cleanCode} not found in the wasteland yet.`, 'info');
+      }
+    } catch (err) {
+      console.warn('Error fetching invite room:', err);
+      this.switchToStandardAuth();
+      if (this.domLoginRoomCode) this.domLoginRoomCode.value = cleanCode;
+    }
+  }
+
+  switchToStandardAuth() {
+    if (this.domStandardAuthSection) this.domStandardAuthSection.style.display = 'block';
+    if (this.domInviteJoinSection) this.domInviteJoinSection.style.display = 'none';
+  }
+
+  async handleInviteClaimSubmit(e) {
+    e.preventDefault();
+    const enteredName = this.domInviteCustomUserName ? this.domInviteCustomUserName.value.trim() : '';
+    if (!enteredName) return;
+
+    const submitBtn = this.domBtnConfirmInviteJoin;
+    const originalText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Entering Oasis...';
+    }
+
+    try {
+      const code = (this.domLoginRoomCode.value.trim() || (this.currentInviteRoom ? this.currentInviteRoom.roomCode : '')).toUpperCase();
+      let room = await this.syncManager.fetchRoomState(code);
+      if (!room) {
+        room = this.currentInviteRoom || createDefaultRoomState(code, code, enteredName);
+      }
+
+      // Check if roommate already exists in roster (e.g. they claimed an existing name or typed their name)
+      let user = room.roommates.find(r => r.name.toLowerCase() === enteredName.toLowerCase());
+      if (!user) {
+        const avatars = ['👤', '⚡', '☕', '🎧', '🌱', '🏄', '🦊'];
+        user = {
+          id: `usr-${Date.now()}`,
+          name: enteredName,
+          avatar: avatars[Math.floor(Math.random() * avatars.length)],
+          lastFilledAt: null,
+          totalFills: 0,
+          status: 'active'
+        };
+        room.roommates.push(user);
+      }
+
+      // Strictly bind identity to this local device session
+      SessionManager.setSession(room.roomCode, user.id, user.name);
+
+      this.state = {
+        ...room,
+        currentUserId: user.id,
+        currentUserName: user.name
+      };
+
+      // Sync to cloud so other roommates see new member
+      await this.syncManager.syncState(room);
+      this.syncManager.subscribeToRoom(room.roomCode);
+
+      // Clean query parameter from URL so future reloads don't re-trigger invite gatekeeper
+      try {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch {
+        // Ignore
+      }
+
+      this.showDashboard();
+      this.showToast(`Welcome to ${room.hostelBlock} • Room ${room.roomNumber}, ${user.name}!`, 'success');
+    } catch (err) {
+      console.error('Error claiming invite identity:', err);
+      this.showToast('Could not enter Oasis. Please check your network and try again.', 'urgent');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    }
   }
 
   showLogin() {
@@ -369,17 +548,26 @@ class WaterKegApp {
       }
 
       // 3. Bind active user identity to this device session
-      room.currentUserId = user.id;
-      room.currentUserName = user.name;
-      this.state = room;
-
       SessionManager.setSession(room.roomCode, user.id, user.name);
+
+      this.state = {
+        ...room,
+        currentUserId: user.id,
+        currentUserName: user.name
+      };
 
       // 4. Save to cloud so all other roommates see this new member
       await this.syncManager.syncState(room);
 
       // 5. Subscribe to real-time changes
       this.syncManager.subscribeToRoom(room.roomCode);
+
+      try {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch {
+        // Ignore
+      }
 
       this.showDashboard();
       this.showToast(`Welcome to ${room.hostelBlock} • Room ${room.roomNumber}, ${user.name}!`, 'success');
@@ -410,12 +598,25 @@ class WaterKegApp {
 
     try {
       const room = createDefaultRoomState(block, roomNum, creator);
-      this.state = room;
+      const creatorUser = room.roommates[0];
 
-      SessionManager.setSession(room.roomCode, room.currentUserId, room.currentUserName);
+      this.state = {
+        ...room,
+        currentUserId: creatorUser.id,
+        currentUserName: creatorUser.name
+      };
+
+      SessionManager.setSession(room.roomCode, creatorUser.id, creatorUser.name);
 
       await this.syncManager.syncState(room);
       this.syncManager.subscribeToRoom(room.roomCode);
+
+      try {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch {
+        // Ignore
+      }
 
       this.showDashboard();
       this.showToast(`Room created for ${room.hostelBlock} • Room ${room.roomNumber}!`, 'success');
@@ -446,14 +647,32 @@ class WaterKegApp {
     if (this.domLoginRoomCode) this.domLoginRoomCode.value = '';
     if (this.domLoginUserName) this.domLoginUserName.value = '';
 
+    this.switchToStandardAuth();
     this.showLogin();
     this.showToast('Switched room. Join or create a new room below.', 'info');
   }
 
   getCurrentUser() {
-    if (!this.state || !this.state.roommates) return { id: 'usr-anon', name: 'You', avatar: '👤' };
+    if (!this.state || !this.state.roommates || !this.state.roommates.length) {
+      return { id: null, name: 'Guest', avatar: '👤' };
+    }
     const user = this.state.roommates.find(r => r.id === this.state.currentUserId);
-    return user || this.state.roommates[0] || { id: 'usr-anon', name: 'You', avatar: '👤' };
+    if (user) return user;
+
+    // Secondary match by name if user ID changed
+    if (this.state.currentUserName) {
+      const matchByName = this.state.roommates.find(
+        r => r.name.toLowerCase() === this.state.currentUserName.toLowerCase()
+      );
+      if (matchByName) {
+        this.state.currentUserId = matchByName.id;
+        SessionManager.setSession(this.state.roomCode, matchByName.id, matchByName.name);
+        return matchByName;
+      }
+    }
+
+    // NEVER return this.state.roommates[0] as fallback!
+    return { id: null, name: 'Select Profile', avatar: '👤' };
   }
 
   handleRemoteUpdate(remoteState) {
@@ -483,6 +702,12 @@ class WaterKegApp {
   // --- KEG STATE ACTIONS ---
   handleReportEmpty() {
     const active = this.getCurrentUser();
+    if (!active.id) {
+      this.showToast('Please claim or enter your roommate name first!', 'urgent');
+      this.openProfileModal();
+      return;
+    }
+
     this.state.kegStatus = 'empty';
     this.state.lastEmptiedAt = new Date().toISOString();
     this.state.lastEmptiedBy = active.name;
@@ -502,6 +727,13 @@ class WaterKegApp {
 
   // --- REFILL MODAL (Locked to Current User) ---
   openRefillModal() {
+    const current = this.getCurrentUser();
+    if (!current.id) {
+      this.showToast('Please claim or enter your roommate name first!', 'urgent');
+      this.openProfileModal();
+      return;
+    }
+
     this.stopWebcam();
     this.currentScanResult = null;
     this.domConfirmRefillSubmitBtn.disabled = true;
@@ -514,7 +746,6 @@ class WaterKegApp {
     this.domCaptureWebcamBtn.style.display = 'none';
 
     // Lock to active user
-    const current = this.getCurrentUser();
     this.domRefillActiveUserName.textContent = current.name;
 
     this.domRefillModal.classList.add('active');
@@ -647,7 +878,11 @@ class WaterKegApp {
 
     const current = this.getCurrentUser();
     const roommate = this.state.roommates.find(r => r.id === current.id);
-    if (!roommate) return;
+    if (!roommate) {
+      this.showToast('Please claim or enter your roommate profile first!', 'urgent');
+      this.openProfileModal();
+      return;
+    }
 
     const now = new Date().toISOString();
     const scan = this.currentScanResult || {
@@ -764,7 +999,75 @@ class WaterKegApp {
     if (this.domProfileModalFills) {
       this.domProfileModalFills.textContent = `${user.totalFills || 0} refills logged`;
     }
+
+    this.renderProfileRoommateList();
+
     this.domProfileModal.classList.add('active');
+  }
+
+  renderProfileRoommateList() {
+    if (!this.domProfileRoommateList || !this.state || !Array.isArray(this.state.roommates)) return;
+    this.domProfileRoommateList.innerHTML = '';
+    const activeUser = this.getCurrentUser();
+
+    this.state.roommates.forEach(roommate => {
+      const row = document.createElement('div');
+      row.className = 'profile-roommate-row';
+
+      const isCurrentActive = activeUser.id && roommate.id === activeUser.id;
+
+      row.innerHTML = `
+        <div class="profile-roommate-info">
+          <span>${roommate.avatar || '👤'}</span>
+          <span>${roommate.name}</span>
+          ${isCurrentActive ? '<span class="profile-active-tag">Active</span>' : ''}
+        </div>
+        ${!isCurrentActive ? `<button type="button" class="btn-switch-to-user" data-id="${roommate.id}">Switch</button>` : ''}
+      `;
+
+      const switchBtn = row.querySelector('.btn-switch-to-user');
+      if (switchBtn) {
+        switchBtn.addEventListener('click', () => {
+          this.switchActiveProfileTo(roommate);
+        });
+      }
+
+      this.domProfileRoommateList.appendChild(row);
+    });
+  }
+
+  switchActiveProfileTo(roommate) {
+    if (!roommate || !this.state) return;
+    this.state.currentUserId = roommate.id;
+    this.state.currentUserName = roommate.name;
+    SessionManager.setSession(this.state.roomCode, roommate.id, roommate.name);
+    this.render();
+    this.closeProfileModal();
+    this.showToast(`Switched active profile to ${roommate.name}`, 'success');
+  }
+
+  async handleAddNewProfileFromModal() {
+    if (!this.domNewRoommateProfileName || !this.state) return;
+    const name = this.domNewRoommateProfileName.value.trim();
+    if (!name) return;
+
+    let user = this.state.roommates.find(r => r.name.toLowerCase() === name.toLowerCase());
+    if (!user) {
+      const avatars = ['👤', '⚡', '☕', '🎧', '🌱', '🏄', '🦊'];
+      user = {
+        id: `usr-${Date.now()}`,
+        name,
+        avatar: avatars[Math.floor(Math.random() * avatars.length)],
+        lastFilledAt: null,
+        totalFills: 0,
+        status: 'active'
+      };
+      this.state.roommates.push(user);
+      await this.syncManager.syncState(this.state);
+    }
+
+    this.domNewRoommateProfileName.value = '';
+    this.switchActiveProfileTo(user);
   }
 
   closeProfileModal() {

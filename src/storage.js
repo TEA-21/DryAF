@@ -56,8 +56,6 @@ export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '30
     lastFilledBy: creatorName,
     lastEmptiedAt: null,
     lastEmptiedBy: null,
-    currentUserId: creator.id,
-    currentUserName: creator.name,
     roommates: [creator],
     refillLogs: []
   };
@@ -72,8 +70,6 @@ export const DEMO_ROOM_STATE = {
   lastFilledBy: 'Taylor',
   lastEmptiedAt: null,
   lastEmptiedBy: null,
-  currentUserId: 'usr-1',
-  currentUserName: 'Alex',
   roommates: DEFAULT_ROOMMATES,
   refillLogs: [
     {

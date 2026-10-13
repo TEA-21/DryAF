@@ -114,6 +114,11 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--bg-primary);
@@ -141,6 +146,7 @@ body {
   max-width: var(--container-max-width);
   margin: 0 auto;
   padding: 24px 20px 80px;
+  overflow-x: hidden;
 }
 
 /* ==========================================================================
@@ -209,7 +215,9 @@ body {
   transform: rotate(2deg);
 }
 
-.header-controls {
+.header-controls,
+.header-room-group,
+.header-actions-group {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1312,3 +1320,597 @@ body {
   from { transform: translateY(20px) scale(0.9); opacity: 0; }
   to { transform: translateY(0) scale(1); opacity: 1; }
 }
+
+/* ==========================================================================
+   Responsive & Mobile Adaptations (Tablets & Phones)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Container Breathing Space */
+  .app-container {
+    padding: 12px 12px 64px;
+  }
+
+  /* Comic Header: Pixel-Perfect 2-Row Grid */
+  .app-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    padding: 12px 14px;
+    gap: 10px 8px;
+    margin-bottom: 16px;
+    box-shadow: var(--comic-shadow-sm);
+  }
+
+  .brand-wrapper {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    gap: 8px;
+  }
+
+  .brand-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.35rem;
+  }
+
+  .brand-title {
+    font-size: 1.45rem;
+  }
+
+  .header-actions-group {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-self: end;
+  }
+
+  #themeToggleBtn {
+    width: 38px;
+    height: 38px;
+    font-size: 1.05rem;
+  }
+
+  #switchProfileBtn {
+    height: 38px;
+    padding: 2px 10px 2px 6px;
+    font-size: 0.8rem;
+    max-width: 140px;
+  }
+
+  .profile-avatar-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.85rem;
+  }
+
+  .profile-name-text {
+    max-width: 75px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-room-group {
+    grid-column: 1 / 3;
+    grid-row: 2 / 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .room-badge {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn-switch-room {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  /* Comic Card Paddings */
+  .comic-card {
+    padding: 16px 14px;
+    box-shadow: var(--comic-shadow-sm);
+  }
+
+  .card-header-comic {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .card-label-comic {
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+  }
+
+  .keg-status-badge {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    gap: 5px;
+  }
+
+  /* Comic Speech Bubble Centered */
+  .comic-bubble {
+    display: table;
+    margin: 0 auto 12px auto;
+    font-size: 0.76rem;
+    padding: 6px 10px;
+    text-align: center;
+  }
+
+  .comic-bubble::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Hero Keg Visual: Center Stack */
+  .keg-visual-container {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    margin: 8px 0 16px;
+  }
+
+  .keg-bottle {
+    width: 96px;
+    height: 142px;
+    margin: 0 auto;
+  }
+
+  .keg-title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .keg-subtitle {
+    font-size: 0.88rem;
+    margin-bottom: 4px;
+  }
+
+  .keg-meta {
+    font-size: 0.75rem;
+  }
+
+  /* Full-Width Mobile Action Buttons */
+  .keg-actions {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .btn-comic {
+    width: 100%;
+    padding: 13px 16px;
+    font-size: 0.88rem;
+    box-shadow: var(--comic-shadow-sm);
+    justify-content: center;
+  }
+
+  /* Spotlight Card */
+  .spotlight-card {
+    padding: 18px 14px;
+    box-shadow: var(--comic-shadow-sm);
+  }
+
+  .spotlight-sticker {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    right: 12px;
+    top: -10px;
+  }
+
+  .spotlight-user-hero {
+    gap: 12px;
+    margin: 10px 0 14px;
+  }
+
+  .spotlight-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 1.8rem;
+  }
+
+  .spotlight-name {
+    font-size: 1.25rem;
+  }
+
+  .spotlight-urgency {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+  }
+
+  .spotlight-metrics {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding-top: 12px;
+  }
+
+  .metric-item {
+    padding: 8px 10px;
+  }
+
+  .metric-label {
+    font-size: 0.68rem;
+  }
+
+  .metric-val {
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Survivor Turn Order */
+  .section-header-comic {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .section-title-comic {
+    font-size: 1.12rem;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .section-count-comic {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+  }
+
+  #openInviteBtn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+  }
+
+  /* Queue Cards: Balanced Multi-Row Layout */
+  .queue-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 8px;
+    box-shadow: var(--comic-shadow-sm);
+  }
+
+  .queue-left {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .queue-rank {
+    font-size: 1.1rem;
+    width: 24px;
+  }
+
+  .queue-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  .queue-user-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .queue-user-name {
+    font-size: 0.95rem;
+    flex-wrap: wrap;
+    gap: 6px;
+    line-height: 1.2;
+  }
+
+  .queue-user-sub {
+    font-size: 0.74rem;
+    margin-top: 2px;
+  }
+
+  .queue-right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(24, 24, 27, 0.2);
+    width: 100%;
+  }
+
+  [data-theme="dark"] .queue-right {
+    border-top-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .fairness-bar-container {
+    width: 100%;
+    height: 14px;
+  }
+
+  /* Activity Feed / Oasis Chronicles */
+  .history-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+    box-shadow: var(--comic-shadow-sm);
+  }
+
+  .history-left {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .history-photo-thumb {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  .history-filler {
+    font-size: 0.88rem;
+  }
+
+  .history-time {
+    font-size: 0.74rem;
+  }
+
+  .history-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+    padding-top: 4px;
+    border-top: 1px dashed rgba(24, 24, 27, 0.15);
+  }
+
+  [data-theme="dark"] .history-actions {
+    border-top-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .history-badge, .btn-report {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+
+  /* Gatekeeper / Login Billboard */
+  .auth-wrapper {
+    padding: 16px 8px;
+    min-height: 94vh;
+  }
+
+  .auth-card {
+    padding: 24px 16px 20px;
+    box-shadow: var(--comic-shadow);
+    border-width: 3px;
+  }
+
+  .theme-toggle-auth {
+    top: 12px !important;
+    right: 12px !important;
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+  }
+
+  .auth-header {
+    margin-bottom: 18px;
+  }
+
+  .auth-title {
+    font-size: 1.95rem;
+  }
+
+  .auth-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .auth-tabs {
+    margin-bottom: 16px;
+  }
+
+  .auth-tab {
+    padding: 8px 6px;
+    font-size: 0.78rem;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    font-size: 0.8rem;
+  }
+
+  .form-input {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  /* Modals (Slide-up Bottom Sheet on Mobile) */
+  .modal-backdrop {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
+  .modal-window {
+    padding: 18px 14px;
+    max-height: 92vh;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0px -4px 0px var(--ink-black);
+    border-bottom: none;
+  }
+
+  .modal-header {
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+  }
+
+  .modal-title {
+    font-size: 1.12rem;
+  }
+
+  .scanner-box {
+    max-height: 220px;
+    aspect-ratio: 16/9;
+  }
+
+  .verdict-box {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .verdict-status {
+    font-size: 0.88rem;
+  }
+
+  .verdict-desc {
+    font-size: 0.76rem;
+  }
+
+  /* Toast Notification */
+  .toast-container {
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+    align-items: center;
+  }
+
+  .toast {
+    width: 100%;
+    max-width: 360px;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    justify-content: center;
+    text-align: center;
+    box-shadow: var(--comic-shadow);
+  }
+}
+
+/* ====================================================================
+   INVITE CHIPS & PROFILE SELECTOR STYLING
+   ==================================================================== */
+.invite-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.invite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface-card);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-comic);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-snap);
+}
+
+.invite-chip:hover {
+  background: var(--desert-amber);
+  color: var(--ink-black);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--comic-shadow);
+}
+
+.invite-chip.selected {
+  background: var(--oasis-cyan);
+  color: var(--ink-black);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+}
+
+.profile-roommate-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.profile-roommate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-card);
+  border: var(--ink-border-sm);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-snap);
+}
+
+.profile-roommate-row:hover {
+  background: var(--bg-surface);
+}
+
+.profile-roommate-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-comic);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.profile-active-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--desert-amber);
+  color: var(--ink-black);
+  border: 1px solid var(--ink-black);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn-switch-to-user {
+  background: var(--bg-surface);
+  border: 1px solid var(--ink-black);
+  font-family: var(--font-comic);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-snap);
+}
+
+.btn-switch-to-user:hover {
+  background: var(--oasis-cyan);
+  color: var(--ink-black);
+  transform: translate(-1px, -1px);
+}
+
+
