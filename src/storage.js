@@ -11,6 +11,13 @@
 
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
 
 const STORAGE_PREFIX = 'waterkeg_room_';
 const SESSION_KEY = 'waterkeg_session_v2';
@@ -31,7 +38,7 @@ export const DEFAULT_ROOMMATES = [
   { id: 'usr-4', name: 'Sam', avatar: '⚡', lastFilledAt: null, totalFills: 0, status: 'active' },
 ];
 
-export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '304', creatorName = 'Alex') {
+export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '304', creatorName = 'Alex', creatorExtra = {}) {
   const cleanBlock = hostelBlock.trim();
   const cleanRoom = roomNumber.trim();
   // Standard room code format e.g. "B-304" or "H4-201"
@@ -39,9 +46,12 @@ export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '30
   const roomCode = `${blockShort}-${cleanRoom}`.toUpperCase();
 
   const creator = {
-    id: `usr-${Date.now()}`,
+    id: creatorExtra.id || `usr-${Date.now()}`,
     name: creatorName.trim(),
-    avatar: '👤',
+    avatar: creatorExtra.avatar || '👤',
+    photoUrl: creatorExtra.photoUrl || null,
+    email: creatorExtra.email || null,
+    googleUid: creatorExtra.googleUid || null,
     lastFilledAt: null,
     totalFills: 0,
     status: 'active'
@@ -107,9 +117,15 @@ export class SessionManager {
     }
   }
 
-  static setSession(roomCode, userId, userName) {
+  static setSession(roomCode, userId, userName, googleData = null) {
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode, userId, userName }));
+      const session = { roomCode, userId, userName };
+      if (googleData) {
+        session.googleUid = googleData.uid || googleData.googleUid || null;
+        session.email = googleData.email || null;
+        session.photoURL = googleData.photoURL || googleData.photoUrl || null;
+      }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } catch {
       // Ignore
     }
@@ -121,6 +137,84 @@ export class SessionManager {
     } catch {
       // Ignore
     }
+  }
+}
+
+export class AuthManager {
+  static auth = null;
+
+  static init(firebaseApp) {
+    if (!this.auth && firebaseApp) {
+      try {
+        this.auth = getAuth(firebaseApp);
+      } catch (err) {
+        console.warn('Firebase Auth initialization error:', err);
+      }
+    }
+    return this.auth;
+  }
+
+  static getAuthInstance() {
+    if (!this.auth) {
+      const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+      this.init(app);
+    }
+    return this.auth;
+  }
+
+  static getCurrentUser() {
+    const auth = this.getAuthInstance();
+    if (auth && auth.currentUser) {
+      const u = auth.currentUser;
+      return {
+        uid: u.uid,
+        displayName: u.displayName || 'Google Wastelander',
+        email: u.email,
+        photoURL: u.photoURL
+      };
+    }
+    return null;
+  }
+
+  static async signInWithGoogle() {
+    const auth = this.getAuthInstance();
+    if (!auth) throw new Error('Firebase Auth is not available.');
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    return {
+      uid: user.uid,
+      displayName: user.displayName || 'Google Wastelander',
+      email: user.email,
+      photoURL: user.photoURL
+    };
+  }
+
+  static async signOutGoogle() {
+    const auth = this.getAuthInstance();
+    if (auth) {
+      await signOut(auth);
+    }
+  }
+
+  static onAuthStateChanged(callback) {
+    const auth = this.getAuthInstance();
+    if (auth) {
+      return onAuthStateChanged(auth, (user) => {
+        if (user) {
+          callback({
+            uid: user.uid,
+            displayName: user.displayName || 'Google Wastelander',
+            email: user.email,
+            photoURL: user.photoURL
+          });
+        } else {
+          callback(null);
+        }
+      });
+    }
+    return () => {};
   }
 }
 
@@ -146,8 +240,9 @@ export class SyncManager {
         this.firebaseApp = getApps()[0];
       }
       this.firestore = getFirestore(this.firebaseApp);
+      AuthManager.init(this.firebaseApp);
       this.isCloudConnected = true;
-      console.log('Firebase Firestore initialized successfully.');
+      console.log('Firebase Firestore and Auth initialized successfully.');
     } catch (e) {
       console.warn('Firebase initialization error, running in local-only fallback mode:', e);
       this.isCloudConnected = false;
@@ -330,7 +425,18 @@ export class SyncManager {
           lastFilledBy: state.lastFilledBy || null,
           lastEmptiedAt: state.lastEmptiedAt || null,
           lastEmptiedBy: state.lastEmptiedBy || null,
-          roommates: state.roommates || [],
+          roommates: (state.roommates || []).map(r => ({
+            id: r.id,
+            name: r.name,
+            avatar: r.avatar || '👤',
+            photoUrl: r.photoUrl || null,
+            email: r.email || null,
+            googleUid: r.googleUid || null,
+            lastFilledAt: r.lastFilledAt || null,
+            totalFills: typeof r.totalFills === 'number' ? r.totalFills : 0,
+            status: r.status || 'active',
+            penalties: typeof r.penalties === 'number' ? r.penalties : 0
+          })),
           refillLogs: sanitizedLogs
         };
 

@@ -1954,4 +1954,189 @@ body {
   transform: translate(-1px, -1px);
 }
 
+/* ====================================================================
+   GOOGLE OAUTH & PROFILE AVATARS
+   ==================================================================== */
+.google-auth-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn-google-auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--bg-surface-card);
+  color: var(--text-primary);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow);
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  font-family: var(--font-comic);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-snap);
+}
+
+.btn-google-auth:hover {
+  background: var(--bg-subtle);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--ink-black);
+}
+
+.btn-google-auth:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--ink-black);
+}
+
+.google-icon-svg {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.google-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--oasis-cyan-bg);
+  border: var(--ink-border);
+  box-shadow: var(--comic-shadow-sm);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.google-pill-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: var(--ink-border-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.google-pill-info {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+}
+
+.google-pill-name {
+  font-family: var(--font-comic);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.google-pill-email {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-google-disconnect {
+  background: var(--bg-surface-card);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--hazard-red-dark);
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: all var(--transition-snap);
+}
+
+.btn-google-disconnect:hover {
+  background: var(--hazard-red-bg);
+  transform: scale(1.05);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 14px 0 16px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 2px dashed var(--border-color);
+}
+
+.auth-divider span {
+  padding: 0 10px;
+  font-family: var(--font-comic);
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.google-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--oasis-cyan-bg);
+  color: var(--oasis-cyan-dark);
+  border: var(--ink-border-sm);
+  box-shadow: 2px 2px 0px var(--ink-black);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+/* User Google Avatar Image in Avatar containers */
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.spotlight-avatar img.user-avatar-img {
+  border: var(--ink-border);
+}
+
+.queue-avatar img.user-avatar-img {
+  border: var(--ink-border-sm);
+}
+
+.profile-icon-btn img.user-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-black);
+}
+
+.invite-chip img.user-avatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-black);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+
 

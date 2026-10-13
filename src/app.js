@@ -7,7 +7,7 @@
 import confetti from 'canvas-confetti';
 import { calculateLRUQueue, formatTimeAgo } from './lru.js';
 import { WaterKegVisionAI } from './ai-vision.js';
-import { SyncManager, SessionManager, createDefaultRoomState, DEMO_ROOM_STATE } from './storage.js';
+import { SyncManager, SessionManager, AuthManager, createDefaultRoomState, DEMO_ROOM_STATE } from './storage.js';
 
 class WaterKegApp {
   constructor() {
@@ -18,6 +18,7 @@ class WaterKegApp {
     // Camera and scan state
     this.currentScanResult = null;
     this.webcamStream = null;
+    this.currentGoogleAuthUser = null;
 
     this.initTheme();
     this.cacheDom();
@@ -40,6 +41,15 @@ class WaterKegApp {
     this.domNewHostelBlock = document.getElementById('newHostelBlock');
     this.domNewRoomNumber = document.getElementById('newRoomNumber');
     this.domNewCreatorName = document.getElementById('newCreatorName');
+
+    // Google OAuth Elements
+    this.domBtnLoginGoogleBtn = document.getElementById('btnLoginGoogleBtn');
+    this.domLoginGooglePill = document.getElementById('loginGooglePill');
+    this.domLoginGooglePillAvatar = document.getElementById('loginGooglePillAvatar');
+    this.domLoginGooglePillName = document.getElementById('loginGooglePillName');
+    this.domLoginGooglePillEmail = document.getElementById('loginGooglePillEmail');
+    this.domBtnLoginGoogleDisconnect = document.getElementById('btnLoginGoogleDisconnect');
+    this.domBtnInviteGoogleBtn = document.getElementById('btnInviteGoogleBtn');
 
     // Dedicated Invite Join Elements
     this.domStandardAuthSection = document.getElementById('standardAuthSection');
@@ -137,6 +147,8 @@ class WaterKegApp {
     this.domProfileRoommateList = document.getElementById('profileRoommateList');
     this.domNewRoommateProfileName = document.getElementById('newRoommateProfileName');
     this.domAddNewProfileBtn = document.getElementById('addNewProfileBtn');
+    this.domProfileGoogleVerifiedBadge = document.getElementById('profileGoogleVerifiedBadge');
+    this.domProfileGoogleEmailText = document.getElementById('profileGoogleEmailText');
 
     // Lightbox Modal
     this.domLightboxModal = document.getElementById('lightboxModal');
@@ -190,6 +202,17 @@ class WaterKegApp {
       this.domLoginThemeToggleBtn.addEventListener('click', () => this.toggleTheme());
     }
     this.updateThemeIcons(document.documentElement.getAttribute('data-theme'));
+
+    // Google OAuth Events
+    if (this.domBtnLoginGoogleBtn) {
+      this.domBtnLoginGoogleBtn.addEventListener('click', () => this.handleGoogleSignIn());
+    }
+    if (this.domBtnLoginGoogleDisconnect) {
+      this.domBtnLoginGoogleDisconnect.addEventListener('click', () => this.handleGoogleDisconnect());
+    }
+    if (this.domBtnInviteGoogleBtn) {
+      this.domBtnInviteGoogleBtn.addEventListener('click', () => this.handleGoogleSignInInvite());
+    }
 
     // Auth Tabs & Invite Claim
     this.domTabJoinRoomBtn.addEventListener('click', () => this.switchAuthTab('join'));
@@ -330,6 +353,22 @@ class WaterKegApp {
     const roomParam = urlParams.get('room');
     const session = SessionManager.getSession();
 
+    // Check for cached Google authentication in session or active Firebase state
+    if (session && session.googleUid) {
+      this.currentGoogleAuthUser = {
+        uid: session.googleUid,
+        displayName: session.userName,
+        email: session.email,
+        photoURL: session.photoURL
+      };
+    }
+    AuthManager.onAuthStateChanged((user) => {
+      if (user) {
+        this.currentGoogleAuthUser = user;
+      }
+      this.updateGoogleAuthUI();
+    });
+
     if (roomParam) {
       const cleanParam = roomParam.trim().toUpperCase();
 
@@ -427,8 +466,10 @@ class WaterKegApp {
             room.roommates.forEach(roommate => {
               const chip = document.createElement('button');
               chip.type = 'button';
-              chip.className = 'invite-chip';
-              chip.innerHTML = `<span>${roommate.avatar || '👤'}</span> <span>${roommate.name}</span>`;
+              const chipAvatar = roommate.photoUrl
+                ? `<img src="${roommate.photoUrl}" class="user-avatar-img" referrerpolicy="no-referrer" />`
+                : `<span>${roommate.avatar || '👤'}</span>`;
+              chip.innerHTML = `${chipAvatar} <span>${roommate.name}</span>`;
               chip.addEventListener('click', () => {
                 this.domInviteRoommateChipsList.querySelectorAll('.invite-chip').forEach(c => c.classList.remove('selected'));
                 chip.classList.add('selected');
@@ -482,18 +523,25 @@ class WaterKegApp {
       if (!user) {
         const avatars = ['👤', '⚡', '☕', '🎧', '🌱', '🏄', '🦊'];
         user = {
-          id: `usr-${Date.now()}`,
+          id: this.currentGoogleAuthUser?.uid ? `google-${this.currentGoogleAuthUser.uid.slice(0, 8)}` : `usr-${Date.now()}`,
           name: enteredName,
           avatar: avatars[Math.floor(Math.random() * avatars.length)],
+          photoUrl: this.currentGoogleAuthUser?.photoURL || null,
+          email: this.currentGoogleAuthUser?.email || null,
+          googleUid: this.currentGoogleAuthUser?.uid || null,
           lastFilledAt: null,
           totalFills: 0,
           status: 'active'
         };
         room.roommates.push(user);
+      } else if (this.currentGoogleAuthUser) {
+        user.photoUrl = this.currentGoogleAuthUser.photoURL || user.photoUrl;
+        user.email = this.currentGoogleAuthUser.email || user.email;
+        user.googleUid = this.currentGoogleAuthUser.uid || user.googleUid;
       }
 
       // Strictly bind identity to this local device session
-      SessionManager.setSession(room.roomCode, user.id, user.name);
+      SessionManager.setSession(room.roomCode, user.id, user.name, this.currentGoogleAuthUser);
 
       this.state = {
         ...room,
@@ -529,6 +577,100 @@ class WaterKegApp {
   showLogin() {
     this.domLoginView.style.display = 'flex';
     this.domDashboardView.style.display = 'none';
+    this.updateGoogleAuthUI();
+  }
+
+  // --- GOOGLE OAUTH HANDLERS ---
+  async handleGoogleSignIn() {
+    try {
+      if (this.domBtnLoginGoogleBtn) {
+        this.domBtnLoginGoogleBtn.disabled = true;
+      }
+      const googleUser = await AuthManager.signInWithGoogle();
+      this.currentGoogleAuthUser = googleUser;
+      this.updateGoogleAuthUI();
+
+      // Pre-fill inputs with user's Google display name if empty or default
+      if (this.domLoginUserName && (!this.domLoginUserName.value || this.domLoginUserName.value === 'Alex')) {
+        this.domLoginUserName.value = googleUser.displayName;
+      }
+      if (this.domNewCreatorName && (!this.domNewCreatorName.value || this.domNewCreatorName.value === 'Alex')) {
+        this.domNewCreatorName.value = googleUser.displayName;
+      }
+      this.showToast(`Signed in as ${googleUser.displayName}! Ready to join or found an oasis.`, 'success');
+    } catch (err) {
+      console.warn('Google Sign-In failed or cancelled:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        this.showToast('Google sign-in popup was closed.', 'info');
+      } else if (err.code === 'auth/popup-blocked') {
+        this.showToast('Popup was blocked by your browser. Please allow popups for DryAF.', 'urgent');
+      } else {
+        this.showToast(`Google Sign-In: ${err.message || 'Please try again'}`, 'warning');
+      }
+    } finally {
+      if (this.domBtnLoginGoogleBtn) {
+        this.domBtnLoginGoogleBtn.disabled = false;
+      }
+    }
+  }
+
+  async handleGoogleDisconnect() {
+    try {
+      await AuthManager.signOutGoogle();
+    } catch (err) {
+      console.warn('Google sign-out error:', err);
+    }
+    this.currentGoogleAuthUser = null;
+    this.updateGoogleAuthUI();
+    this.showToast('Disconnected Google account.', 'info');
+  }
+
+  updateGoogleAuthUI() {
+    if (this.currentGoogleAuthUser) {
+      if (this.domBtnLoginGoogleBtn) this.domBtnLoginGoogleBtn.style.display = 'none';
+      if (this.domLoginGooglePill) {
+        this.domLoginGooglePill.style.display = 'flex';
+        if (this.domLoginGooglePillAvatar) this.domLoginGooglePillAvatar.src = this.currentGoogleAuthUser.photoURL || '';
+        if (this.domLoginGooglePillName) this.domLoginGooglePillName.textContent = this.currentGoogleAuthUser.displayName;
+        if (this.domLoginGooglePillEmail) this.domLoginGooglePillEmail.textContent = this.currentGoogleAuthUser.email || '';
+      }
+    } else {
+      if (this.domBtnLoginGoogleBtn) this.domBtnLoginGoogleBtn.style.display = 'flex';
+      if (this.domLoginGooglePill) this.domLoginGooglePill.style.display = 'none';
+    }
+  }
+
+  async handleGoogleSignInInvite() {
+    try {
+      if (this.domBtnInviteGoogleBtn) {
+        this.domBtnInviteGoogleBtn.disabled = true;
+      }
+      const googleUser = await AuthManager.signInWithGoogle();
+      this.currentGoogleAuthUser = googleUser;
+      if (this.domInviteCustomUserName) {
+        this.domInviteCustomUserName.value = googleUser.displayName;
+      }
+      this.showToast(`Verified with Google: ${googleUser.displayName}! Entering Oasis...`, 'success');
+
+      // Auto-submit invite claim with Google credentials
+      if (this.currentInviteRoom) {
+        const dummyEvent = new Event('submit', { cancelable: true });
+        await this.handleInviteClaimSubmit(dummyEvent);
+      }
+    } catch (err) {
+      console.warn('Google invite sign-in failed:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        this.showToast('Google sign-in popup was cancelled.', 'info');
+      } else if (err.code === 'auth/popup-blocked') {
+        this.showToast('Popup was blocked by your browser. Please allow popups for DryAF.', 'urgent');
+      } else {
+        this.showToast(`Google Sign-In: ${err.message || 'Please try again'}`, 'warning');
+      }
+    } finally {
+      if (this.domBtnInviteGoogleBtn) {
+        this.domBtnInviteGoogleBtn.disabled = false;
+      }
+    }
   }
 
   showDashboard() {
@@ -577,18 +719,25 @@ class WaterKegApp {
       if (!user) {
         const avatars = ['👤', '⚡', '☕', '🎧', '🌱', '🏄', '🦊'];
         user = {
-          id: `usr-${Date.now()}`,
+          id: this.currentGoogleAuthUser?.uid ? `google-${this.currentGoogleAuthUser.uid.slice(0, 8)}` : `usr-${Date.now()}`,
           name,
           avatar: avatars[Math.floor(Math.random() * avatars.length)],
+          photoUrl: this.currentGoogleAuthUser?.photoURL || null,
+          email: this.currentGoogleAuthUser?.email || null,
+          googleUid: this.currentGoogleAuthUser?.uid || null,
           lastFilledAt: null,
           totalFills: 0,
           status: 'active'
         };
         room.roommates.push(user);
+      } else if (this.currentGoogleAuthUser) {
+        user.photoUrl = this.currentGoogleAuthUser.photoURL || user.photoUrl;
+        user.email = this.currentGoogleAuthUser.email || user.email;
+        user.googleUid = this.currentGoogleAuthUser.uid || user.googleUid;
       }
 
       // 3. Bind active user identity to this device session
-      SessionManager.setSession(room.roomCode, user.id, user.name);
+      SessionManager.setSession(room.roomCode, user.id, user.name, this.currentGoogleAuthUser);
 
       this.state = {
         ...room,
@@ -637,7 +786,13 @@ class WaterKegApp {
     }
 
     try {
-      const room = createDefaultRoomState(block, roomNum, creator);
+      const creatorExtra = this.currentGoogleAuthUser ? {
+        id: `google-${this.currentGoogleAuthUser.uid.slice(0, 8)}`,
+        photoUrl: this.currentGoogleAuthUser.photoURL,
+        email: this.currentGoogleAuthUser.email,
+        googleUid: this.currentGoogleAuthUser.uid
+      } : {};
+      const room = createDefaultRoomState(block, roomNum, creator, creatorExtra);
       const creatorUser = room.roommates[0];
 
       this.state = {
@@ -646,7 +801,7 @@ class WaterKegApp {
         currentUserName: creatorUser.name
       };
 
-      SessionManager.setSession(room.roomCode, creatorUser.id, creatorUser.name);
+      SessionManager.setSession(room.roomCode, creatorUser.id, creatorUser.name, this.currentGoogleAuthUser);
 
       await this.syncManager.syncState(room);
       this.syncManager.subscribeToRoom(room.roomCode);
@@ -671,10 +826,16 @@ class WaterKegApp {
     }
   }
 
-  handleLeaveRoom() {
+  async handleLeaveRoom() {
     this.syncManager.unsubscribe();
     SessionManager.clearSession();
     this.state = null;
+    this.currentGoogleAuthUser = null;
+    try {
+      await AuthManager.signOutGoogle();
+    } catch {
+      // Ignore
+    }
 
     // Remove any query params so user starts fresh with clean join/create view
     try {
@@ -1156,10 +1317,25 @@ class WaterKegApp {
   // --- ROOMMATE ACCOUNT MODAL ---
   openProfileModal() {
     const user = this.getCurrentUser();
-    if (this.domProfileModalAvatar) this.domProfileModalAvatar.textContent = user.avatar;
+    if (this.domProfileModalAvatar) {
+      if (user.photoUrl) {
+        this.domProfileModalAvatar.innerHTML = `<img src="${user.photoUrl}" class="user-avatar-img" alt="${user.name}" referrerpolicy="no-referrer" />`;
+      } else {
+        this.domProfileModalAvatar.textContent = user.avatar || '👤';
+      }
+    }
     if (this.domProfileModalName) this.domProfileModalName.textContent = user.name;
     if (this.domProfileModalRoom && this.state) {
       this.domProfileModalRoom.textContent = `${this.state.hostelBlock} • Room ${this.state.roomNumber}`;
+    }
+    if (this.domProfileGoogleVerifiedBadge && this.domProfileGoogleEmailText) {
+      const email = user.email || this.currentGoogleAuthUser?.email;
+      if (email) {
+        this.domProfileGoogleVerifiedBadge.style.display = 'flex';
+        this.domProfileGoogleEmailText.textContent = email;
+      } else {
+        this.domProfileGoogleVerifiedBadge.style.display = 'none';
+      }
     }
     if (this.domProfileModalFills) {
       const fills = typeof user.totalFills === 'number' ? user.totalFills : 0;
@@ -1183,10 +1359,13 @@ class WaterKegApp {
       row.className = 'profile-roommate-row';
 
       const isCurrentActive = activeUser.id && roommate.id === activeUser.id;
+      const avatarHtml = roommate.photoUrl
+        ? `<img src="${roommate.photoUrl}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;" referrerpolicy="no-referrer" />`
+        : `<span>${roommate.avatar || '👤'}</span>`;
 
       row.innerHTML = `
         <div class="profile-roommate-info">
-          <span>${roommate.avatar || '👤'}</span>
+          ${avatarHtml}
           <span>${roommate.name}</span>
           ${isCurrentActive ? '<span class="profile-active-tag">Active</span>' : ''}
         </div>
@@ -1272,7 +1451,13 @@ class WaterKegApp {
     this.domCurrentRoomCodeLabel.textContent = `${hostelBlock} • Room ${roomNumber}`;
 
     // 2. Active User Display
-    if (this.domActiveUserAvatar) this.domActiveUserAvatar.textContent = currentUser.avatar;
+    if (this.domActiveUserAvatar) {
+      if (currentUser.photoUrl) {
+        this.domActiveUserAvatar.innerHTML = `<img src="${currentUser.photoUrl}" class="user-avatar-img" alt="${currentUser.name}" referrerpolicy="no-referrer" />`;
+      } else {
+        this.domActiveUserAvatar.textContent = currentUser.avatar || '👤';
+      }
+    }
     if (this.domActiveUserName) this.domActiveUserName.textContent = currentUser.name;
     if (this.domSwitchProfileBtn) {
       this.domSwitchProfileBtn.title = `Logged in as ${currentUser.name} • Click to switch roommate`;
@@ -1310,7 +1495,13 @@ class WaterKegApp {
 
     // 4. Spotlight Card (Next Up to Refill)
     if (nextRoommate) {
-      this.domSpotlightAvatar.textContent = nextRoommate.avatar;
+      if (this.domSpotlightAvatar) {
+        if (nextRoommate.photoUrl) {
+          this.domSpotlightAvatar.innerHTML = `<img src="${nextRoommate.photoUrl}" class="user-avatar-img" alt="${nextRoommate.name}" referrerpolicy="no-referrer" />`;
+        } else {
+          this.domSpotlightAvatar.textContent = nextRoommate.avatar || '👤';
+        }
+      }
       this.domSpotlightName.textContent = nextRoommate.name;
       this.domSpotlightLastRefill.textContent = formatTimeAgo(nextRoommate.lastFilledAt);
 
@@ -1356,10 +1547,14 @@ class WaterKegApp {
       const debtNotice = isDebtor ? ' • ⚠️ IN WATER DEBT' : '';
       const fillsLabel = `${totalFills} total fills (${roommate.fillPercentage}% share)${debtNotice}`;
 
+      const queueAvatar = roommate.photoUrl
+        ? `<img src="${roommate.photoUrl}" class="user-avatar-img" alt="${roommate.name}" referrerpolicy="no-referrer" />`
+        : (roommate.avatar || '👤');
+
       card.innerHTML = `
         <div class="queue-left">
           <div class="queue-rank">#${rankNum}</div>
-          <div class="queue-avatar">${roommate.avatar}</div>
+          <div class="queue-avatar">${queueAvatar}</div>
           <div class="queue-user-info">
             <span class="queue-user-name">
               ${roommate.name}
