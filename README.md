@@ -1,7 +1,13 @@
 # 🌵 DryAF — Hostel Dehydration Survival Guide
 
 > *"Who left the oasis dry again?!"* 💀  
-> **DryAF** is a comedic, neo-brutalist web application designed for college dorms and student hostels to track whose turn it is to refill the drinking water keg. Packed with on-device computer vision verification, fairness-weighted turn rotation, and cartoon wasteland survival lore.
+> **DryAF** is a comedic, neo-brutalist web application designed for college dorms and student hostels to track whose turn it is to refill the drinking water keg. Packed with on-device computer vision verification, fairness-weighted turn rotation, interactive Wheel of Sacrifice tie-breaking, and cartoon wasteland survival lore.
+
+---
+
+## 🌐 Live Application
+
+🚀 **Play / Use DryAF Live:** [https://dryaf-oasis-65def.web.app/](https://dryaf-oasis-65def.web.app/)
 
 ---
 
@@ -18,6 +24,17 @@ Every hostel dorm suffers from the same tragedy of the commons:
 
 ## ✨ Features
 
+### 🔐 Mandatory Google OAuth Verification
+- **Verified Hostel Identity**: Seamless Google Sign-In with official Google identity pills, user profile avatars, and authentic Google display names.
+- **Strict Single-Gatekeeper**: No mock credentials or insecure name bypasses; accounts and refill chronologies are anchored to authentic Google accounts.
+- **Cross-Device Session Continuity**: Automatically remembers user rooms and profiles via secure local and cloud tokens.
+
+### 🎡 The Wheel of Sacrifice (Equal-Priority Tie-Breaker)
+- **Hostel Fate Engine**: When the keg goes dry and multiple roommates share equal top priority (identical refill count & equal parchedness), the **Wheel of Sacrifice** activates.
+- **Survivor Consensus**: Requires all tied candidates to click **"I Agree to Spin"** before the wheel unlocks.
+- **Real-Time Synchronized Spin**: Live circular canvas stage with authentic needle flapper physics, ticking audio feedback (via Web Audio API), synchronized multi-client countdown, and suspenseful deceleration to pick the sacrificial filler.
+- **Anti-Spoiler Protection**: Prevents winner reveals in the dashboard turn order until the physical spin completes across all roommates' devices.
+
 ### 🎨 Cartoon Wasteland & Comic Survival Aesthetic
 - **Neo-Brutalist Comic Panels**: Hand-inked vector outlines (`3px solid #18181B`), unblurred hard block shadows (`4px 4px 0px #18181B`), and comic speech bubbles with directional tails.
 - **Scenic Oasis Backdrops**: Full-bleed illustrated desert oasis landscapes:
@@ -27,6 +44,7 @@ Every hostel dorm suffers from the same tragedy of the commons:
   - 👑 **Oasis Savior**: Most refills logged for the room.
   - 🔥 **Next Sacrifice**: The roommate mathematically due to refill next.
   - 🌵 **Human Cactus**: Refill evader with the largest deficit.
+  - 💀 **Oasis Debtor**: Roommates caught bluffing or in negative refill balance.
 
 ### 🤖 100% Client-Side AI Computer Vision Scanner
 - **Fluid Lens Caustics & Meniscus Detection**: Uses vertical luminance gradient analysis and cylindrical refraction contrast to verify that a keg is genuinely full before allowing a refill submission.
@@ -39,13 +57,14 @@ Every hostel dorm suffers from the same tragedy of the commons:
 - **LRU Tie-Breaking**: When roommates share the same fill count, uses Least-Recently-Used (time since last fill) to rotate order.
 
 ### 🚪 Hostel Room Access & Locked Identity
-- **Hostel Block & Room Identification**: Join an existing room via a room code (e.g., `B-304`) or create one using **Hostel Block** + **Room Number**.
-- **Device-Locked Single Identity**: Uploads are permanently attributed to the active logged-in user on that device. Roommates cannot switch identities on the fly to impersonate someone else.
+- **Hostel Block & Room Identification**: Join an existing room via a room code (e.g., `B-304` or `K-430`) or found one using **Hostel Block** + **Room Number**.
+- **Device-Locked Single Identity**: Uploads are permanently attributed to the active Google user on that device. Roommates cannot impersonate someone else.
 - **Instant Logout**: A dedicated personal dossier modal with a one-click *"Flee Oasis"* logout action.
 
-### 🚩 Anti-Cheating: "Call Bluff" Dispute Tribunal
-- If a roommate uploads a recycled, duplicate, or fraudulent photo, any room member can click **"🚩 Call Bluff"** in the Oasis Chronicles feed.
-- Disputing revokes the fill credit from that roommate's tally and marks the entry as `⚠️ Bluff Called / Voided`.
+### ⚖️ 3-Person Consensus Tribunal ("Call Bluff")
+- If a roommate uploads a fake, old, or empty bottle photo, room members can click **"🚩 Call Bluff"** in the Oasis Chronicles feed.
+- Launches a dedicated **Tribunal Modal** tracking required roommate consensus votes.
+- Upon quorum consensus, the fraudulent refill is voided, and the cheater is hit with an automatic **-2 fills deception penalty**.
 
 ### 📢 One-Click Roommate Summons
 - Single-click copyable WhatsApp / SMS invite link pre-formatted with the room code and direct URL to rally thirsty roommates into the rotation.
@@ -56,10 +75,12 @@ Every hostel dorm suffers from the same tragedy of the commons:
 
 - **Core**: Vanilla JavaScript (ES Modules), Semantic HTML5
 - **Styling**: Vanilla CSS3 Design System (Custom properties, Neo-brutalism, Comic typography)
+- **Authentication**: Firebase Authentication (Google OAuth provider)
+- **Cloud Database & Hosting**: Firebase Firestore & Firebase Hosting
+- **Audio & FX**: Web Audio API (procedural flapper clicks) & [canvas-confetti](https://www.npmjs.com/package/canvas-confetti)
 - **Tooling & Bundler**: [Vite](https://vitejs.dev/)
 - **Visuals & Typography**: Google Fonts (`Bungee`, `Space Grotesk`, `Inter`, `JetBrains Mono`)
-- **FX**: [canvas-confetti](https://www.npmjs.com/package/canvas-confetti)
-- **Optional Real-Time Cloud Sync**: Firebase Firestore (with local multi-tab `BroadcastChannel` & `localStorage` fallback)
+- **Offline / Local Sync**: HTML5 `BroadcastChannel` & `localStorage` fallback
 
 ---
 
@@ -73,8 +94,8 @@ Every hostel dorm suffers from the same tragedy of the commons:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/dryaf.git
-cd dryaf
+git clone https://github.com/TEA-21/DryAF.git
+cd DryAF
 
 # 2. Install dependencies
 npm install
