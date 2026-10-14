@@ -297,14 +297,7 @@ class WaterKegApp {
     this.domCaptureWebcamBtn.addEventListener('click', () => this.captureWebcamFrame());
     this.domConfirmRefillSubmitBtn.addEventListener('click', () => this.submitRefill());
 
-    const testFullBtn = document.getElementById('testFullKegBtn');
-    if (testFullBtn) {
-      testFullBtn.addEventListener('click', () => this.handleDirectTestPhoto('/RoomKegFill.jpeg'));
-    }
-    const testEmptyBtn = document.getElementById('testEmptyKegBtn');
-    if (testEmptyBtn) {
-      testEmptyBtn.addEventListener('click', () => this.handleDirectTestPhoto('/RoomKegEmpty.jpeg'));
-    }
+
 
     // Expose direct test helpers on window for automated testing
     window.dryafTest = {
