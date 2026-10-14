@@ -23,12 +23,12 @@ const STORAGE_PREFIX = 'waterkeg_room_';
 const SESSION_KEY = 'waterkeg_session_v2';
 
 export const FIREBASE_CONFIG = {
-  projectId: "dryaf-oasis-65def",
-  appId: "1:121859009077:web:f71fa9747e08bd86449f7c",
-  storageBucket: "dryaf-oasis-65def.firebasestorage.app",
-  apiKey: "AIzaSyDNC04T4_3lKi0cYSnSLonmge-441wjkt0",
-  authDomain: "dryaf-oasis-65def.firebaseapp.com",
-  messagingSenderId: "121859009077"
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "dryaf-oasis-65def",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:121859009077:web:f71fa9747e08bd86449f7c",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "dryaf-oasis-65def.firebasestorage.app",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "dryaf-oasis-65def.firebaseapp.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "121859009077"
 };
 
 export const DEFAULT_ROOMMATES = [
