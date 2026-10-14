@@ -397,6 +397,19 @@ class WaterKegApp {
     AuthManager.onAuthStateChanged((user) => {
       if (user) {
         this.currentGoogleAuthUser = user;
+        if (this.state && Array.isArray(this.state.roommates)) {
+          const match = this.state.roommates.find(
+            r => (r.googleUid && r.googleUid === user.uid) ||
+                 (r.email && user.email && r.email.toLowerCase() === user.email.toLowerCase()) ||
+                 (r.name && user.displayName && r.name.toLowerCase() === user.displayName.toLowerCase())
+          );
+          if (match) {
+            this.state.currentUserId = match.id;
+            this.state.currentUserName = match.name;
+            SessionManager.setSession(this.state.roomCode, match.id, match.name, user);
+          }
+          this.render();
+        }
       }
       this.updateGoogleAuthUI();
     });
@@ -862,6 +875,21 @@ class WaterKegApp {
     const user = this.state.roommates.find(r => r.id === this.state.currentUserId);
     if (user) return user;
 
+    // Secondary match by Google UID or email if user ID changed
+    const googleUser = this.currentGoogleAuthUser || AuthManager.getCurrentUser();
+    if (googleUser) {
+      const matchByGoogle = this.state.roommates.find(
+        r => (r.googleUid && r.googleUid === googleUser.uid) ||
+             (r.email && googleUser.email && r.email.toLowerCase() === googleUser.email.toLowerCase())
+      );
+      if (matchByGoogle) {
+        this.state.currentUserId = matchByGoogle.id;
+        this.state.currentUserName = matchByGoogle.name;
+        SessionManager.setSession(this.state.roomCode, matchByGoogle.id, matchByGoogle.name, googleUser);
+        return matchByGoogle;
+      }
+    }
+
     // Secondary match by name if user ID changed
     if (this.state.currentUserName) {
       const matchByName = this.state.roommates.find(
@@ -874,7 +902,16 @@ class WaterKegApp {
       }
     }
 
-    // NEVER return this.state.roommates[0] as fallback!
+    // If only 1 roommate exists in room (e.g. founder)
+    if (this.state.roommates.length === 1) {
+      const sole = this.state.roommates[0];
+      this.state.currentUserId = sole.id;
+      this.state.currentUserName = sole.name;
+      SessionManager.setSession(this.state.roomCode, sole.id, sole.name, googleUser);
+      return sole;
+    }
+
+    // Fallback
     return { id: null, name: 'Select Profile', avatar: '👤' };
   }
 
@@ -1989,7 +2026,6 @@ class WaterKegApp {
 
     // 1. Header
     this.domCurrentRoomCodeLabel.textContent = `${hostelBlock} • Room ${roomNumber}`;
-    this.updateDashboardDevStrip();
 
     // 2. Active User Display
     if (this.domActiveUserAvatar) {

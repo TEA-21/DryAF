@@ -38,7 +38,7 @@ export const DEFAULT_ROOMMATES = [
   { id: 'usr-4', name: 'Sam', avatar: '⚡', lastFilledAt: null, totalFills: 0, status: 'active' },
 ];
 
-export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '304', creatorName = 'Alex', creatorExtra = {}) {
+export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '304', creatorName = 'Wastelander', creatorExtra = {}) {
   const cleanBlock = hostelBlock.trim();
   const cleanRoom = roomNumber.trim();
   // Standard room code format e.g. "B-304" or "H4-201"
@@ -278,8 +278,8 @@ export class SyncManager {
       console.warn('Failed to load room state from local storage:', e);
     }
 
-    // Default demo room fallback if running offline
-    if (cleanCode === 'B-304' || cleanCode === 'KEG-404') {
+    // Default demo room fallback only for explicit DEMO-OASIS
+    if (cleanCode === 'DEMO-OASIS') {
       return { ...DEMO_ROOM_STATE, roomCode: cleanCode };
     }
 
