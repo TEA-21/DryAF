@@ -46,6 +46,11 @@
               <span>Continue with Google</span>
             </button>
 
+            <!-- Subtitle before sign-in -->
+            <p id="googleLoginHelpText" class="form-hint" style="text-align: center; margin-top: 8px; font-weight: 700; color: var(--text-secondary);">
+              🔒 Sign in with Google to enter or found an Oasis
+            </p>
+
             <!-- Connected Google Profile Pill (shown when signed in) -->
             <div id="loginGooglePill" class="google-user-pill" style="display: none;">
               <img id="loginGooglePillAvatar" src="" class="google-pill-img" alt="Google Profile" referrerpolicy="no-referrer" />
@@ -57,49 +62,40 @@
             </div>
           </div>
 
-          <div class="auth-divider">
-            <span>OR ENTER DETAILS MANUALLY</span>
+          <!-- Auth Forms Container (Unlocked only after Google authentication) -->
+          <div id="authFormsContainer" style="display: none;">
+            <div class="auth-tabs">
+              <button type="button" class="auth-tab active" id="tabJoinRoomBtn">Raid Existing Oasis</button>
+              <button type="button" class="auth-tab" id="tabCreateRoomBtn">Found New Oasis</button>
+            </div>
+
+            <!-- Form 1: Join Oasis via Code -->
+            <form id="joinRoomForm" class="auth-form">
+              <div class="form-group">
+                <label class="form-label" for="loginRoomCode">Oasis Code</label>
+                <input type="text" class="form-input" id="loginRoomCode" placeholder="e.g. B-304" required />
+                <p class="form-hint">Enter your hostel room code or join via an invite link</p>
+              </div>
+              <button type="submit" class="btn-comic btn-comic-primary" style="width: 100%; margin-top: 10px;">
+                Enter Oasis
+              </button>
+            </form>
+
+            <!-- Form 2: Found New Oasis -->
+            <form id="createRoomForm" class="auth-form" style="display: none;">
+              <div class="form-group">
+                <label class="form-label" for="newHostelBlock">Hostel Block</label>
+                <input type="text" class="form-input" id="newHostelBlock" placeholder="e.g. Block B or Hostel 4" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="newRoomNumber">Room Number</label>
+                <input type="text" class="form-input" id="newRoomNumber" placeholder="e.g. 304" required />
+              </div>
+              <button type="submit" class="btn-comic btn-comic-primary" style="width: 100%; margin-top: 10px;">
+                Found & Enter Oasis
+              </button>
+            </form>
           </div>
-
-          <div class="auth-tabs">
-            <button type="button" class="auth-tab active" id="tabJoinRoomBtn">Raid Existing Oasis</button>
-            <button type="button" class="auth-tab" id="tabCreateRoomBtn">Found New Oasis</button>
-          </div>
-
-          <!-- Form 1: Join Oasis via Code -->
-          <form id="joinRoomForm" class="auth-form">
-            <div class="form-group">
-              <label class="form-label" for="loginRoomCode">Oasis Code</label>
-              <input type="text" class="form-input" id="loginRoomCode" placeholder="e.g. B-304" required />
-              <p class="form-hint">Enter your hostel room code or join via an invite link</p>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="loginUserName">Your Wastelander Name</label>
-              <input type="text" class="form-input" id="loginUserName" placeholder="e.g. Rahul" required />
-            </div>
-            <button type="submit" class="btn-comic btn-comic-primary" style="width: 100%; margin-top: 10px;">
-              Enter Oasis
-            </button>
-          </form>
-
-          <!-- Form 2: Found New Oasis -->
-          <form id="createRoomForm" class="auth-form" style="display: none;">
-            <div class="form-group">
-              <label class="form-label" for="newHostelBlock">Hostel Block</label>
-              <input type="text" class="form-input" id="newHostelBlock" placeholder="e.g. Block B or Hostel 4" required />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="newRoomNumber">Room Number</label>
-              <input type="text" class="form-input" id="newRoomNumber" placeholder="e.g. 304" required />
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="newCreatorName">Your Name</label>
-              <input type="text" class="form-input" id="newCreatorName" placeholder="e.g. Rahul" required />
-            </div>
-            <button type="submit" class="btn-comic btn-comic-primary" style="width: 100%; margin-top: 10px;">
-              Found & Enter Oasis
-            </button>
-          </form>
         </div>
 
         <!-- Mode 2: Dedicated Invite Join View (Shown when opening ?room=CODE) -->
@@ -116,7 +112,7 @@
             </div>
           </div>
 
-          <!-- Google Sign-In Quick Claim -->
+          <!-- Google Sign-In Quick Claim (Mandatory) -->
           <div class="google-auth-container" style="margin-bottom: 16px;">
             <button type="button" class="btn-comic btn-google-auth" id="btnInviteGoogleBtn">
               <svg class="google-icon-svg" viewBox="0 0 24 24">
@@ -127,31 +123,10 @@
               </svg>
               <span>Join with Google</span>
             </button>
+            <p class="form-hint" style="text-align: center; margin-top: 8px; font-weight: 700; color: var(--text-secondary);">
+              🔒 Google verification is required to enter this Oasis
+            </p>
           </div>
-
-          <div class="auth-divider">
-            <span>OR ENTER / CHOOSE NAME</span>
-          </div>
-
-          <form id="inviteClaimForm" class="auth-form" style="display: block;">
-            <!-- Existing Roommates quick pick if room has unclaimed members -->
-            <div id="inviteExistingRoommatesGroup" style="display: none; margin-bottom: 18px; text-align: left;">
-              <label class="form-label">Are you already listed?</label>
-              <p class="form-hint" style="margin-bottom: 8px;">Tap your name to claim your spot on this device:</p>
-              <div id="inviteRoommateChipsList" class="invite-chips-grid"></div>
-            </div>
-
-            <!-- Custom name entry -->
-            <div class="form-group" style="text-align: left;">
-              <label class="form-label" for="inviteCustomUserName">Your Wastelander Name</label>
-              <input type="text" class="form-input" id="inviteCustomUserName" placeholder="Type your name (e.g. Priya or Dave)" required />
-              <p class="form-hint">Your refills and turn order will be locked to this name on your phone.</p>
-            </div>
-
-            <button type="submit" class="btn-comic btn-comic-primary" id="btnConfirmInviteJoin" style="width: 100%; margin-top: 10px;">
-              🚀 Enter Oasis As Yourself
-            </button>
-          </form>
 
           <button type="button" class="btn-text-subtle" id="btnSwitchToStandardAuth" style="width: 100%; margin-top: 14px; background: none; border: none; font-family: var(--font-comic); font-size: 0.82rem; font-weight: 700; color: var(--text-muted); cursor: pointer; text-decoration: underline;">
             Enter a different Oasis code or create your own
@@ -444,19 +419,14 @@
           </div>
         </div>
 
-        <!-- Switch Roommate Identity on this Phone -->
-        <div class="profile-switch-section" style="background: var(--bg-subtle); border: var(--ink-border-sm); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 16px; text-align: left;">
+        <!-- Locked Google Identity Notice -->
+        <div style="background: var(--bg-subtle); border: var(--ink-border-sm); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 16px; text-align: left;">
           <div style="font-family: var(--font-comic); font-weight: 800; text-transform: uppercase; font-size: 0.82rem; color: var(--text-primary); margin-bottom: 4px;">
-            Switch Roommate On This Phone
+            Verified Google Survivor
           </div>
-          <p class="form-hint" style="margin-bottom: 10px; font-size: 0.76rem;">
-            Logged in as the wrong roommate? Tap your name below to switch instantly:
+          <p class="form-hint" style="margin-bottom: 0; font-size: 0.76rem;">
+            Your fills, turn order, and identity are strictly locked to your Google account. To switch accounts, log out below.
           </p>
-          <div id="profileRoommateList" class="profile-roommate-selector"></div>
-          <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <input type="text" id="newRoommateProfileName" class="form-input" style="padding: 8px 10px; font-size: 0.85rem;" placeholder="Or add your name..." />
-            <button type="button" id="addNewProfileBtn" class="btn-comic btn-comic-primary" style="white-space: nowrap; font-size: 0.8rem; padding: 6px 12px;">+ Add</button>
-          </div>
         </div>
 
         <button class="btn-comic btn-comic-danger" id="profileLogoutBtn" style="width: 100%;">
