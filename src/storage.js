@@ -67,7 +67,8 @@ export function createDefaultRoomState(hostelBlock = 'Block B', roomNumber = '30
     lastEmptiedAt: null,
     lastEmptiedBy: null,
     roommates: [creator],
-    refillLogs: []
+    refillLogs: [],
+    wheelState: null
   };
 }
 
@@ -80,6 +81,7 @@ export const DEMO_ROOM_STATE = {
   lastFilledBy: 'Taylor',
   lastEmptiedAt: null,
   lastEmptiedBy: null,
+  wheelState: null,
   roommates: DEFAULT_ROOMMATES,
   refillLogs: [
     {
@@ -437,7 +439,18 @@ export class SyncManager {
             status: r.status || 'active',
             penalties: typeof r.penalties === 'number' ? r.penalties : 0
           })),
-          refillLogs: sanitizedLogs
+          refillLogs: sanitizedLogs,
+          wheelState: state.wheelState ? {
+            id: state.wheelState.id,
+            kegEmptiedAt: state.wheelState.kegEmptiedAt || null,
+            candidateIds: Array.isArray(state.wheelState.candidateIds) ? state.wheelState.candidateIds : [],
+            agreedUserIds: Array.isArray(state.wheelState.agreedUserIds) ? state.wheelState.agreedUserIds : [],
+            status: state.wheelState.status || 'waiting_for_agreements',
+            countdownStartedAt: state.wheelState.countdownStartedAt || null,
+            spunAt: state.wheelState.spunAt || null,
+            winnerId: state.wheelState.winnerId || null,
+            targetAngle: typeof state.wheelState.targetAngle === 'number' ? state.wheelState.targetAngle : null
+          } : null
         };
 
         await setDoc(roomDocRef, cloudPayload, { merge: true });

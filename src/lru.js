@@ -126,3 +126,28 @@ export function formatTimeAgo(timestamp) {
   if (diffDays < 30) return `${diffDays}d ago`;
   return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
+
+/**
+ * Detects strict priority ties at the top of the queue.
+ * Active roommates (not away) who share identical totalFills AND
+ * identical lastFilledAt timestamps (both null/never or identical time).
+ * Returns array of tied roommate objects if length >= 2, otherwise [].
+ */
+export function getStrictPriorityTies(queue = []) {
+  if (!Array.isArray(queue) || queue.length === 0) return [];
+  const active = queue.filter(r => r.status !== 'away');
+  if (active.length < 2) return [];
+
+  const top = active[0];
+  const topLastTime = top.lastFilledAt ? new Date(top.lastFilledAt).getTime() : null;
+  const topFills = typeof top.totalFills === 'number' ? top.totalFills : 0;
+
+  const ties = active.filter(r => {
+    const rLastTime = r.lastFilledAt ? new Date(r.lastFilledAt).getTime() : null;
+    const rFills = typeof r.totalFills === 'number' ? r.totalFills : 0;
+    return rFills === topFills && rLastTime === topLastTime;
+  });
+
+  return ties.length >= 2 ? ties : [];
+}
+

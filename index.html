@@ -123,6 +123,8 @@
               </svg>
               <span>Join with Google</span>
             </button>
+
+
             <p class="form-hint" style="text-align: center; margin-top: 8px; font-weight: 700; color: var(--text-secondary);">
               🔒 Google verification is required to enter this Oasis
             </p>
@@ -175,6 +177,7 @@
         </div>
       </header>
 
+
       <!-- Main Comic Hero Grid -->
       <main>
         <div class="hero-grid">
@@ -205,6 +208,20 @@
                 <p class="keg-subtitle" id="kegSubtitle">Last refilled by Taylor (yesterday)</p>
                 <p class="keg-meta" id="kegMetaDetails">5-Gallon Drinking Water Reservoir</p>
               </div>
+            </div>
+
+            <!-- Active Wheel Banner (when tied priority wheel is active) -->
+            <div id="activeWheelBanner" class="active-wheel-banner" style="display: none;">
+              <div class="wheel-banner-left">
+                <span class="wheel-banner-icon">🎡</span>
+                <div>
+                  <div class="wheel-banner-title">WHEEL OF SACRIFICE ACTIVE</div>
+                  <div class="wheel-banner-sub" id="activeWheelBannerSub">Tied for #1 • 0/2 Agreed</div>
+                </div>
+              </div>
+              <button type="button" class="btn-comic btn-comic-warning btn-comic-sm" id="btnOpenWheelModal">
+                VIEW WHEEL
+              </button>
             </div>
 
             <div class="keg-actions">
@@ -499,6 +516,71 @@
             <button class="btn-comic btn-comic-secondary" id="cancelTribunalVoteBtn" style="flex: 1;">
               CANCEL
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 6: WHEEL OF SACRIFICE (EQUAL PRIORITY TIE BREAKER)
+         ==================================================================== -->
+    <div class="modal-backdrop" id="wheelModal">
+      <div class="modal-window wheel-modal-window">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">🎡 WHEEL OF SACRIFICE</h2>
+            <div class="modal-subtitle-comic">PARCHED PARITY TIE-BREAKER</div>
+          </div>
+          <button class="btn-icon" id="closeWheelModalBtn">✕</button>
+        </div>
+
+        <div class="wheel-modal-body">
+          <p class="wheel-lead-text" id="wheelLeadText">
+            Multiple wastelander survivors are strictly tied for #1 Next Sacrifice! All tied survivors must agree before the Wheel spins.
+          </p>
+
+          <!-- Wheel Canvas Stage with Needle Pointer -->
+          <div class="wheel-stage">
+            <div class="wheel-pointer" id="wheelPointer">▼</div>
+            <div class="wheel-canvas-wrapper">
+              <canvas id="wheelCanvas" width="300" height="300"></canvas>
+            </div>
+            
+            <!-- Countdown Overlay -->
+            <div class="wheel-countdown-overlay" id="wheelCountdownOverlay" style="display: none;">
+              <div class="countdown-badge">🔥 ALL SURVIVORS AGREED!</div>
+              <div class="countdown-number" id="wheelCountdownNumber">2</div>
+              <div class="countdown-sub">SPINNING THE SACRIFICE...</div>
+            </div>
+          </div>
+
+          <!-- Winner Reveal Card -->
+          <div class="wheel-winner-card" id="wheelWinnerCard" style="display: none;">
+            <div class="winner-sticker">🔥 SACRIFICE CHOSEN</div>
+            <div class="winner-avatar" id="wheelWinnerAvatar">👤</div>
+            <div class="winner-headline" id="wheelWinnerHeadline">The Wheel has chosen Alex!</div>
+            <p class="winner-flavor">"By decree of the Wasteland Wheel, you must sacrifice for the Oasis!"</p>
+          </div>
+
+          <!-- Candidates Agreement Roster -->
+          <div class="wheel-candidates-section">
+            <div class="candidates-header">
+              <span class="candidates-title">SURVIVOR CONSENSUS</span>
+              <span class="candidates-count-badge" id="wheelAgreementsCountBadge">0 / 2 AGREED</span>
+            </div>
+            <div class="wheel-candidates-list" id="wheelCandidatesList">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Action Button / Notice -->
+          <div class="wheel-action-area">
+            <button class="btn-comic btn-comic-warning wheel-agree-btn" id="btnWheelAgree">
+              ✋ I AGREE TO SPIN THE WHEEL
+            </button>
+            <div class="wheel-status-hint" id="wheelStatusHint">
+              Waiting for all tied roommates to agree...
+            </div>
           </div>
         </div>
       </div>

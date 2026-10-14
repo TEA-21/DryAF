@@ -5,7 +5,7 @@
  */
 
 import confetti from 'canvas-confetti';
-import { calculateLRUQueue, formatTimeAgo } from './lru.js';
+import { calculateLRUQueue, formatTimeAgo, getStrictPriorityTies } from './lru.js';
 import { WaterKegVisionAI } from './ai-vision.js';
 import { SyncManager, SessionManager, AuthManager, createDefaultRoomState, DEMO_ROOM_STATE } from './storage.js';
 
@@ -19,6 +19,12 @@ class WaterKegApp {
     this.currentScanResult = null;
     this.webcamStream = null;
     this.currentGoogleAuthUser = null;
+
+    // Wheel of Sacrifice State
+    this.wheelRotationAngle = 0;
+    this.currentAnimatingWheelId = null;
+    this.wheelSpinRafId = null;
+    this.audioCtx = null;
 
     this.initTheme();
     this.cacheDom();
@@ -163,6 +169,24 @@ class WaterKegApp {
     this.domTribunalVotersList = document.getElementById('tribunalVotersList');
     this.activeTribunalLogId = null;
 
+    // Wheel of Sacrifice Modal & Banner
+    this.domActiveWheelBanner = document.getElementById('activeWheelBanner');
+    this.domActiveWheelBannerSub = document.getElementById('activeWheelBannerSub');
+    this.domBtnOpenWheelModal = document.getElementById('btnOpenWheelModal');
+    this.domWheelModal = document.getElementById('wheelModal');
+    this.domCloseWheelModalBtn = document.getElementById('closeWheelModalBtn');
+    this.domWheelCanvas = document.getElementById('wheelCanvas');
+    this.domWheelPointer = document.getElementById('wheelPointer');
+    this.domWheelCountdownOverlay = document.getElementById('wheelCountdownOverlay');
+    this.domWheelCountdownNumber = document.getElementById('wheelCountdownNumber');
+    this.domWheelWinnerCard = document.getElementById('wheelWinnerCard');
+    this.domWheelWinnerAvatar = document.getElementById('wheelWinnerAvatar');
+    this.domWheelWinnerHeadline = document.getElementById('wheelWinnerHeadline');
+    this.domWheelAgreementsCountBadge = document.getElementById('wheelAgreementsCountBadge');
+    this.domWheelCandidatesList = document.getElementById('wheelCandidatesList');
+    this.domBtnWheelAgree = document.getElementById('btnWheelAgree');
+    this.domWheelStatusHint = document.getElementById('wheelStatusHint');
+
     // Toast
     this.domToastContainer = document.getElementById('toastContainer');
   }
@@ -268,6 +292,23 @@ class WaterKegApp {
       this.domConfirmTribunalVoteBtn.addEventListener('click', () => this.executeTribunalVote());
     }
 
+    // Wheel of Sacrifice Modal Events
+    if (this.domBtnOpenWheelModal) {
+      this.domBtnOpenWheelModal.addEventListener('click', () => {
+        this.resumeAudioContext();
+        this.openWheelModal();
+      });
+    }
+    if (this.domCloseWheelModalBtn) {
+      this.domCloseWheelModalBtn.addEventListener('click', () => this.closeWheelModal());
+    }
+    if (this.domBtnWheelAgree) {
+      this.domBtnWheelAgree.addEventListener('click', () => {
+        this.resumeAudioContext();
+        this.handleAgreeToSpin();
+      });
+    }
+
     // Rock-solid event delegation for Call Bluff tribunal buttons in history feed
     if (this.domHistoryFeedContainer) {
       this.domHistoryFeedContainer.addEventListener('click', (e) => {
@@ -335,7 +376,7 @@ class WaterKegApp {
   // --- SESSION & GATEKEEPER ---
   async initSessionOrGatekeeper() {
     const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
+    const roomParam = urlParams.get('room') || urlParams.get('roomCode');
     let session = SessionManager.getSession();
 
     // Enforce strictly mandatory Google Auth: purge any unverified sessions
@@ -485,6 +526,8 @@ class WaterKegApp {
         this.showToast('Google sign-in popup was closed.', 'info');
       } else if (err.code === 'auth/popup-blocked') {
         this.showToast('Popup was blocked by your browser. Please allow popups for DryAF.', 'urgent');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        this.showToast('Domain unauthorized for Google OAuth. Please add this domain to Authorized Domains in Firebase Console.', 'urgent');
       } else {
         this.showToast(`Google Sign-In: ${err.message || 'Please try again'}`, 'warning');
       }
@@ -603,6 +646,8 @@ class WaterKegApp {
         this.showToast('Google sign-in popup was cancelled.', 'info');
       } else if (err.code === 'auth/popup-blocked') {
         this.showToast('Popup was blocked by your browser. Please allow popups for DryAF.', 'urgent');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        this.showToast('Domain unauthorized for Google OAuth. Please add this domain to Authorized Domains in Firebase Console.', 'urgent');
       } else {
         this.showToast(`Google Sign-In: ${err.message || 'Please try again'}`, 'warning');
       }
@@ -616,6 +661,9 @@ class WaterKegApp {
   showDashboard() {
     this.domLoginView.style.display = 'none';
     this.domDashboardView.style.display = 'block';
+    if (this.state && this.state.kegStatus === 'empty') {
+      this.reconcileWheelState(false);
+    }
     this.render();
   }
 
@@ -836,14 +884,47 @@ class WaterKegApp {
       const currentUserId = this.state.currentUserId;
       const currentUserName = this.state.currentUserName;
 
+      // Edge Case 6: Union local and remote agreedUserIds if both are in waiting_for_agreements
+      if (
+        this.state.wheelState &&
+        remoteState.wheelState &&
+        this.state.wheelState.id === remoteState.wheelState.id &&
+        this.state.wheelState.status === 'waiting_for_agreements' &&
+        remoteState.wheelState.status === 'waiting_for_agreements'
+      ) {
+        const localAgreed = this.state.wheelState.agreedUserIds || [];
+        const remoteAgreed = remoteState.wheelState.agreedUserIds || [];
+        const mergedAgreed = new Set([...localAgreed, ...remoteAgreed]);
+        remoteState.wheelState.agreedUserIds = Array.from(mergedAgreed);
+
+        // If merged agreements reached 100% quorum, initiate countdown
+        const candidateIds = remoteState.wheelState.candidateIds || [];
+        if (candidateIds.length >= 2 && mergedAgreed.size >= candidateIds.length) {
+          const winnerIndex = Math.floor(Math.random() * candidateIds.length);
+          const winnerId = candidateIds[winnerIndex];
+          const targetAngle = this.calculateWheelTargetAngle(winnerIndex, candidateIds.length);
+          remoteState.wheelState.status = 'countdown';
+          remoteState.wheelState.countdownStartedAt = Date.now();
+          remoteState.wheelState.winnerId = winnerId;
+          remoteState.wheelState.targetAngle = targetAngle;
+        }
+      }
+
       this.state = {
         ...this.state,
         ...remoteState,
         currentUserId,
         currentUserName
       };
+
+      // Edge Case 2 & 3: Reconcile candidate status/roster changes strictly outside of render()
+      this.reconcileWheelState(false);
+
       this.render();
       this.showToast('Room updated with roommate activity', 'info');
+
+      // Edge Case 5: Check and trigger animation loop safely
+      this.checkAndTriggerWheelAnimation();
     }
   }
 
@@ -867,13 +948,19 @@ class WaterKegApp {
     this.state.lastEmptiedAt = new Date().toISOString();
     this.state.lastEmptiedBy = active.name;
 
+    // Edge Case 2: Reconcile wheelState strictly on state transition
+    this.reconcileWheelState(false);
+
     const totalFills = this.state.refillLogs ? this.state.refillLogs.length : 0;
     const queue = calculateLRUQueue(this.state.roommates, totalFills, 'fairness-weighted');
     const nextRoommate = queue[0];
 
     this.persistState();
 
-    if (nextRoommate) {
+    if (this.state.wheelState) {
+      this.showToast(`🚨 DEHYDRATION ALARM! Multiple survivors tied for #1 — Wheel of Sacrifice summoned!`, 'urgent');
+      this.openWheelModal();
+    } else if (nextRoommate) {
       this.showToast(`🚨 DEHYDRATION ALARM! Dry as dust — It's ${nextRoommate.name}'s turn to sacrifice!`, 'urgent');
     } else {
       this.showToast('🚨 DEHYDRATION ALARM! Water reservoir depleted!', 'urgent');
@@ -1058,6 +1145,13 @@ class WaterKegApp {
     this.state.lastFilledBy = roommate.name;
     this.state.lastEmptiedAt = null;
     this.state.lastEmptiedBy = null;
+    this.state.wheelState = null;
+    this.currentAnimatingWheelId = null;
+    if (this.wheelSpinRafId) {
+      cancelAnimationFrame(this.wheelSpinRafId);
+      this.wheelSpinRafId = null;
+    }
+    this.closeWheelModal();
 
     // Log entry
     const newLog = {
@@ -1364,6 +1458,9 @@ class WaterKegApp {
         status: 'active'
       };
       this.state.roommates.push(user);
+      if (this.state.kegStatus === 'empty') {
+        this.reconcileWheelState(false);
+      }
       await this.syncManager.syncState(this.state);
     }
 
@@ -1387,6 +1484,477 @@ class WaterKegApp {
     this.domLightboxModal.classList.remove('active');
   }
 
+  // --- WHEEL OF SACRIFICE (EQUAL PRIORITY TIE BREAKER) ---
+  resumeAudioContext() {
+    try {
+      if (!this.audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          this.audioCtx = new AudioContextClass();
+        }
+      }
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+    } catch {
+      // Ignore audio autoplay restrictions
+    }
+  }
+
+  playTickSound() {
+    try {
+      this.resumeAudioContext();
+      if (!this.audioCtx || this.audioCtx.state !== 'running') return;
+
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(650, this.audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(180, this.audioCtx.currentTime + 0.035);
+      gain.gain.setValueAtTime(0.14, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.035);
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.start();
+      osc.stop(this.audioCtx.currentTime + 0.035);
+    } catch {
+      // Ignore audio error
+    }
+  }
+
+  getTiedCandidateObjects() {
+    if (!this.state || !this.state.wheelState || !Array.isArray(this.state.wheelState.candidateIds)) {
+      return [];
+    }
+    const ids = this.state.wheelState.candidateIds;
+    return ids.map(id => this.state.roommates.find(r => r.id === id)).filter(Boolean);
+  }
+
+  openWheelModal() {
+    if (this.domWheelModal) {
+      this.domWheelModal.classList.add('active');
+      this.renderWheelModalContent();
+    }
+  }
+
+  closeWheelModal() {
+    if (this.domWheelModal) {
+      this.domWheelModal.classList.remove('active');
+    }
+  }
+
+  // Edge Case 2 & 3: Reconcile wheelState strictly outside render()
+  reconcileWheelState(shouldPersist = true) {
+    if (!this.state) return;
+
+    if (this.state.kegStatus !== 'empty') {
+      if (this.state.wheelState) {
+        this.state.wheelState = null;
+        if (shouldPersist) this.persistState();
+      }
+      return;
+    }
+
+    // Keg is empty: calculate strict priority ties
+    const totalHouseholdFills = this.state.refillLogs 
+      ? this.state.refillLogs.filter(l => !l.reported).length 
+      : 0;
+    const queue = calculateLRUQueue(this.state.roommates, totalHouseholdFills, 'fairness-weighted');
+    const ties = getStrictPriorityTies(queue);
+
+    // Case 1: No existing wheelState
+    if (!this.state.wheelState) {
+      if (ties.length >= 2) {
+        this.state.wheelState = {
+          id: `wheel-${Date.now()}`,
+          kegEmptiedAt: this.state.lastEmptiedAt || new Date().toISOString(),
+          candidateIds: ties.map(t => t.id),
+          agreedUserIds: [],
+          status: 'waiting_for_agreements',
+          countdownStartedAt: null,
+          spunAt: null,
+          winnerId: null,
+          targetAngle: null
+        };
+        if (shouldPersist) this.persistState();
+        this.openWheelModal();
+      }
+      return;
+    }
+
+    // Case 2: Existing wheelState while waiting_for_agreements (Edge Case 3: Away deadlock / roster change)
+    if (this.state.wheelState.status === 'waiting_for_agreements') {
+      if (ties.length < 2) {
+        // Less than 2 tied survivors remain; dismiss wheel so remaining candidate takes #1
+        this.state.wheelState = null;
+        if (shouldPersist) this.persistState();
+        this.closeWheelModal();
+        return;
+      }
+
+      // Check if candidate IDs have changed
+      const currentTieIds = ties.map(t => t.id);
+      const prevCandidateIds = this.state.wheelState.candidateIds || [];
+      const hasRosterChanged = currentTieIds.length !== prevCandidateIds.length ||
+        currentTieIds.some(id => !prevCandidateIds.includes(id));
+
+      if (hasRosterChanged) {
+        this.state.wheelState.candidateIds = currentTieIds;
+        this.state.wheelState.agreedUserIds = (this.state.wheelState.agreedUserIds || [])
+          .filter(id => currentTieIds.includes(id));
+        if (shouldPersist) this.persistState();
+      }
+    }
+  }
+
+  handleAgreeToSpin() {
+    const current = this.getCurrentUser();
+    if (!current || !current.id) {
+      this.showToast('Please claim or enter your roommate name first!', 'urgent');
+      this.openProfileModal();
+      return;
+    }
+
+    if (!this.state || !this.state.wheelState) return;
+
+    const wheel = this.state.wheelState;
+    if (wheel.status !== 'waiting_for_agreements') {
+      return;
+    }
+
+    if (!wheel.candidateIds.includes(current.id)) {
+      this.showToast('Only tied survivors can vote to spin the wheel!', 'info');
+      return;
+    }
+
+    // Edge Case 6: Deduplicate agreements with Set
+    const agreedSet = new Set(wheel.agreedUserIds || []);
+    agreedSet.add(current.id);
+    wheel.agreedUserIds = Array.from(agreedSet);
+
+    // Check if all tied candidates have agreed
+    if (agreedSet.size >= wheel.candidateIds.length) {
+      // Quorum reached! Choose winner and target angle
+      const candidateIds = wheel.candidateIds;
+      const winnerIndex = Math.floor(Math.random() * candidateIds.length);
+      const winnerId = candidateIds[winnerIndex];
+      const targetAngle = this.calculateWheelTargetAngle(winnerIndex, candidateIds.length);
+
+      wheel.status = 'countdown';
+      wheel.countdownStartedAt = Date.now();
+      wheel.winnerId = winnerId;
+      wheel.targetAngle = targetAngle;
+
+      this.persistState();
+      this.checkAndTriggerWheelAnimation();
+    } else {
+      this.persistState();
+      this.showToast(`Agreed! Waiting for ${wheel.candidateIds.length - agreedSet.size} more survivor(s)...`, 'info');
+    }
+  }
+
+  // Edge Case 4: Canvas 12 o'clock pointer math with safe margin (middle 60% of slice)
+  calculateWheelTargetAngle(winnerIndex, candidateCount) {
+    const N = candidateCount;
+    const sliceDeg = 360 / N;
+    // Jitter within middle 60% of slice: [-0.3*sliceDeg, +0.3*sliceDeg]
+    const safeJitter = (Math.random() - 0.5) * (0.6 * sliceDeg);
+    const targetSliceAngle = (winnerIndex * sliceDeg) + (sliceDeg / 2) + safeJitter;
+
+    // Pointer is at 270 deg (12 o'clock). Screen angle under needle:
+    // (targetSliceAngle + R) % 360 == 270 => R_base = ((270 - targetSliceAngle) % 360 + 360) % 360
+    const rBase = ((270 - targetSliceAngle) % 360 + 360) % 360;
+
+    // Spin 6 full rotations (2160 deg) plus rBase
+    return 360 * 6 + rBase;
+  }
+
+  // Edge Case 5: Idempotent animation guard & local countdown
+  checkAndTriggerWheelAnimation() {
+    if (!this.state || !this.state.wheelState) return;
+    const { id, status, targetAngle } = this.state.wheelState;
+
+    if (status !== 'countdown' && status !== 'spinning') return;
+
+    if (this.currentAnimatingWheelId === id) {
+      return; // Already animating this wheel session
+    }
+    this.currentAnimatingWheelId = id;
+
+    this.openWheelModal();
+
+    if (this.domWheelCountdownOverlay) this.domWheelCountdownOverlay.style.display = 'flex';
+    if (this.domWheelWinnerCard) this.domWheelWinnerCard.style.display = 'none';
+
+    let count = 2;
+    if (this.domWheelCountdownNumber) this.domWheelCountdownNumber.textContent = count;
+    this.playTickSound();
+
+    const countdownTimer = setInterval(() => {
+      count--;
+      if (count > 0) {
+        if (this.domWheelCountdownNumber) this.domWheelCountdownNumber.textContent = count;
+        this.playTickSound();
+      } else {
+        clearInterval(countdownTimer);
+        if (this.domWheelCountdownOverlay) this.domWheelCountdownOverlay.style.display = 'none';
+        this.runWheelSpinAnimation(targetAngle || 2160);
+      }
+    }, 1000);
+  }
+
+  runWheelSpinAnimation(finalTargetAngle) {
+    if (this.wheelSpinRafId) {
+      cancelAnimationFrame(this.wheelSpinRafId);
+      this.wheelSpinRafId = null;
+    }
+
+    const duration = 4500;
+    const startTime = performance.now();
+    const startAngle = this.wheelRotationAngle % 360;
+    const totalRotation = finalTargetAngle - startAngle;
+
+    const candidates = this.getTiedCandidateObjects();
+    const N = candidates.length || 2;
+    const sliceDeg = 360 / N;
+    let lastSliceIndex = -1;
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      // Ease out quartic deceleration
+      const ease = 1 - Math.pow(1 - progress, 4);
+
+      const currentAngle = startAngle + totalRotation * ease;
+      this.wheelRotationAngle = currentAngle;
+      this.drawWheel(currentAngle);
+
+      // Flapper ticker on slice boundary crossing
+      const currentWheelSlice = Math.floor((((270 - (currentAngle % 360)) + 360) % 360) / sliceDeg);
+      if (currentWheelSlice !== lastSliceIndex) {
+        lastSliceIndex = currentWheelSlice;
+        this.playTickSound();
+        if (this.domWheelPointer) {
+          this.domWheelPointer.classList.add('tick');
+          setTimeout(() => this.domWheelPointer?.classList.remove('tick'), 60);
+        }
+      }
+
+      if (progress < 1) {
+        this.wheelSpinRafId = requestAnimationFrame(animate);
+      } else {
+        this.wheelSpinRafId = null;
+        this.currentAnimatingWheelId = null;
+        this.wheelRotationAngle = finalTargetAngle;
+        this.drawWheel(finalTargetAngle);
+
+        // Edge Case 1: Only transition to completed when spin finishes
+        if (this.state && this.state.wheelState) {
+          this.state.wheelState.status = 'completed';
+          this.state.wheelState.spunAt = Date.now();
+          this.persistState();
+        }
+
+        confetti({
+          particleCount: 70,
+          spread: 60,
+          origin: { y: 0.5 },
+          colors: ['#00E5FF', '#FFE600', '#FF3366', '#00FF66', '#B026FF']
+        });
+
+        const winner = this.state.roommates.find(r => r.id === this.state.wheelState?.winnerId);
+        if (winner) {
+          this.showToast(`👑 THE WHEEL HAS SPOKEN! ${winner.name} is the Chosen Sacrifice!`, 'urgent');
+        }
+      }
+    };
+
+    this.wheelSpinRafId = requestAnimationFrame(animate);
+  }
+
+  drawWheel(rotationDegrees = 0) {
+    if (!this.domWheelCanvas) return;
+    const canvas = this.domWheelCanvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(centerX, centerY) - 8;
+
+    const candidates = this.getTiedCandidateObjects();
+    const N = candidates.length || 2;
+    const sliceAngle = (2 * Math.PI) / N;
+
+    const sliceColors = [
+      '#00E5FF',
+      '#FFE600',
+      '#FF3366',
+      '#00FF66',
+      '#B026FF',
+      '#FF9900'
+    ];
+
+    ctx.save();
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.translate(centerX, centerY);
+    ctx.rotate((rotationDegrees * Math.PI) / 180);
+
+    for (let i = 0; i < N; i++) {
+      const startAngle = i * sliceAngle;
+      const endAngle = (i + 1) * sliceAngle;
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, radius, startAngle, endAngle);
+      ctx.closePath();
+
+      ctx.fillStyle = sliceColors[i % sliceColors.length];
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#18181B';
+      ctx.stroke();
+
+      ctx.save();
+      const midAngle = startAngle + sliceAngle / 2;
+      ctx.rotate(midAngle);
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#18181B';
+      ctx.font = 'bold 15px "Bangers", "Impact", "Arial Black", sans-serif';
+
+      const candidate = candidates[i];
+      const name = candidate ? candidate.name : `Survivor ${i + 1}`;
+      const displayName = name.length > 10 ? name.slice(0, 9) + '…' : name;
+      ctx.fillText(displayName, radius - 24, 0);
+      ctx.restore();
+    }
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#18181B';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, 2 * Math.PI);
+    ctx.fillStyle = '#FFFBEB';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#18181B';
+    ctx.stroke();
+
+    ctx.fillStyle = '#18181B';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🌵', 0, 1);
+
+    ctx.restore();
+  }
+
+  renderWheelModalContent() {
+    if (!this.state || !this.state.wheelState) return;
+    const wheel = this.state.wheelState;
+    const currentUser = this.getCurrentUser();
+    const candidates = this.getTiedCandidateObjects();
+    const agreedIds = wheel.agreedUserIds || [];
+
+    // Draw wheel
+    if (wheel.status === 'completed' && typeof wheel.targetAngle === 'number') {
+      this.drawWheel(wheel.targetAngle);
+    } else if (!this.currentAnimatingWheelId) {
+      this.drawWheel(this.wheelRotationAngle || 0);
+    }
+
+    // Agreement badge
+    if (this.domWheelAgreementsCountBadge) {
+      this.domWheelAgreementsCountBadge.textContent = `${agreedIds.length} / ${candidates.length} AGREED`;
+    }
+
+    // Candidates list
+    if (this.domWheelCandidatesList) {
+      this.domWheelCandidatesList.innerHTML = '';
+      candidates.forEach(cand => {
+        const isAgreed = agreedIds.includes(cand.id);
+        const isCurrent = currentUser.id === cand.id;
+
+        const row = document.createElement('div');
+        row.className = `wheel-candidate-row ${isCurrent ? 'is-current-user' : ''}`;
+
+        const avatarHtml = cand.photoUrl
+          ? `<img src="${cand.photoUrl}" class="user-avatar-img" alt="${cand.name}" referrerpolicy="no-referrer" />`
+          : (cand.avatar || '👤');
+
+        row.innerHTML = `
+          <div class="candidate-info">
+            <div class="candidate-avatar">${avatarHtml}</div>
+            <div class="candidate-name">${cand.name} ${isCurrent ? '<span style="font-size:0.75rem;color:var(--oasis-cyan-dark);">(You)</span>' : ''}</div>
+          </div>
+          <span class="candidate-status-pill ${isAgreed ? 'agreed' : 'pending'}">
+            ${isAgreed ? '✅ Agreed' : '⏳ Waiting'}
+          </span>
+        `;
+        this.domWheelCandidatesList.appendChild(row);
+      });
+    }
+
+    // Winner Card & Action Area
+    if (wheel.status === 'completed' && wheel.winnerId) {
+      if (this.domWheelWinnerCard) {
+        this.domWheelWinnerCard.style.display = 'block';
+        const winner = this.state.roommates.find(r => r.id === wheel.winnerId);
+        if (winner) {
+          if (this.domWheelWinnerAvatar) {
+            if (winner.photoUrl) {
+              this.domWheelWinnerAvatar.innerHTML = `<img src="${winner.photoUrl}" class="user-avatar-img" alt="${winner.name}" referrerpolicy="no-referrer" />`;
+            } else {
+              this.domWheelWinnerAvatar.textContent = winner.avatar || '👤';
+            }
+          }
+          if (this.domWheelWinnerHeadline) {
+            this.domWheelWinnerHeadline.textContent = `The Wheel has chosen ${winner.name}!`;
+          }
+        }
+      }
+      if (this.domBtnWheelAgree) this.domBtnWheelAgree.style.display = 'none';
+      if (this.domWheelStatusHint) {
+        this.domWheelStatusHint.textContent = 'Sacrifice chosen! Refill the reservoir to save the Oasis.';
+      }
+    } else {
+      if (this.domWheelWinnerCard) this.domWheelWinnerCard.style.display = 'none';
+
+      const isCandidate = candidates.some(c => c.id === currentUser.id);
+      if (!isCandidate) {
+        if (this.domBtnWheelAgree) this.domBtnWheelAgree.style.display = 'none';
+        if (this.domWheelStatusHint) {
+          this.domWheelStatusHint.textContent = '👁️ Spectator Mode: Waiting for tied survivors to agree...';
+        }
+      } else {
+        if (this.domBtnWheelAgree) {
+          this.domBtnWheelAgree.style.display = 'block';
+          const hasAgreed = agreedIds.includes(currentUser.id);
+          if (hasAgreed) {
+            this.domBtnWheelAgree.disabled = true;
+            this.domBtnWheelAgree.textContent = '✓ YOU HAVE AGREED TO SPIN';
+            if (this.domWheelStatusHint) {
+              this.domWheelStatusHint.textContent = `Waiting for others... (${agreedIds.length}/${candidates.length} agreed)`;
+            }
+          } else {
+            this.domBtnWheelAgree.disabled = false;
+            this.domBtnWheelAgree.textContent = '✋ I AGREE TO SPIN THE WHEEL';
+            if (this.domWheelStatusHint) {
+              this.domWheelStatusHint.textContent = 'Tap above to cast your agreement to spin.';
+            }
+          }
+        }
+      }
+    }
+  }
+
   // --- MAIN RENDER LOOP ---
   render() {
     if (!this.state) return;
@@ -1397,12 +1965,31 @@ class WaterKegApp {
       : 0;
 
     // Use fairness-weighted sorting: lowest total fills first, rotated by time
-    const queue = calculateLRUQueue(this.state.roommates, totalHouseholdFills, 'fairness-weighted');
+    let queue = calculateLRUQueue(this.state.roommates, totalHouseholdFills, 'fairness-weighted');
+
+    // Edge Case 1: ONLY if wheelState.status === 'completed' and winnerId is set
+    // do we override the queue to pin winner at #1
+    const isWheelCompleted = this.state.kegStatus === 'empty' &&
+                             this.state.wheelState &&
+                             this.state.wheelState.status === 'completed' &&
+                             this.state.wheelState.winnerId;
+
+    if (isWheelCompleted) {
+      const winnerId = this.state.wheelState.winnerId;
+      const winnerIndex = queue.findIndex(r => r.id === winnerId);
+      if (winnerIndex > -1) {
+        const winner = queue.splice(winnerIndex, 1)[0];
+        winner.isWheelWinner = true;
+        queue.unshift(winner);
+      }
+    }
+
     const currentUser = this.getCurrentUser();
     const nextRoommate = queue[0];
 
     // 1. Header
     this.domCurrentRoomCodeLabel.textContent = `${hostelBlock} • Room ${roomNumber}`;
+    this.updateDashboardDevStrip();
 
     // 2. Active User Display
     if (this.domActiveUserAvatar) {
@@ -1447,6 +2034,27 @@ class WaterKegApp {
       this.domOpenRefillModalBtn.textContent = '📸 SNAP PROOF OF OASIS';
     }
 
+    // 3.5 Active Wheel Banner
+    if (this.domActiveWheelBanner) {
+      if (this.state.kegStatus === 'empty' && this.state.wheelState) {
+        this.domActiveWheelBanner.style.display = 'flex';
+        const candidateCount = (this.state.wheelState.candidateIds || []).length;
+        const agreedCount = (this.state.wheelState.agreedUserIds || []).length;
+        if (this.state.wheelState.status === 'completed') {
+          const winner = this.state.roommates.find(r => r.id === this.state.wheelState.winnerId);
+          this.domActiveWheelBannerSub.textContent = winner 
+            ? `Wheel Chosen: ${winner.name} (View Result)` 
+            : 'Wheel completed (View Result)';
+        } else if (this.state.wheelState.status === 'countdown' || this.state.wheelState.status === 'spinning') {
+          this.domActiveWheelBannerSub.textContent = 'Spinning in progress...';
+        } else {
+          this.domActiveWheelBannerSub.textContent = `Tied for #1 • ${agreedCount}/${candidateCount} Agreed`;
+        }
+      } else {
+        this.domActiveWheelBanner.style.display = 'none';
+      }
+    }
+
     // 4. Spotlight Card (Next Up to Refill)
     if (nextRoommate) {
       if (this.domSpotlightAvatar) {
@@ -1464,8 +2072,13 @@ class WaterKegApp {
         : `+${Math.abs(nextRoommate.deficit)} ahead`;
       this.domSpotlightDeficit.textContent = deficitText;
 
-      this.domSpotlightUrgencyBadge.className = `spotlight-urgency ${nextRoommate.urgencyLevel}`;
-      this.domSpotlightUrgencyBadge.innerHTML = `<span>${nextRoommate.urgencyLabel}</span>`;
+      if (nextRoommate.isWheelWinner) {
+        this.domSpotlightUrgencyBadge.className = 'spotlight-urgency urgent';
+        this.domSpotlightUrgencyBadge.innerHTML = '<span>🎡 SACRIFICE BY FATE</span>';
+      } else {
+        this.domSpotlightUrgencyBadge.className = `spotlight-urgency ${nextRoommate.urgencyLevel}`;
+        this.domSpotlightUrgencyBadge.innerHTML = `<span>${nextRoommate.urgencyLabel}</span>`;
+      }
     } else {
       this.domSpotlightName.textContent = 'No Roommates';
       this.domSpotlightLastRefill.textContent = '—';
@@ -1490,13 +2103,15 @@ class WaterKegApp {
       const isCactus = totalFills === 0;
       const comicBadgeTitle = isDebtor 
         ? `💀 OASIS DEBTOR (${totalFills})` 
-        : rankNum === 1 
-          ? '🔥 NEXT SACRIFICE' 
-          : isTopFiller 
-            ? '👑 OASIS SAVIOR' 
-            : isCactus 
-              ? '🌵 HUMAN CACTUS' 
-              : '💧 WATER WARRIOR';
+        : (roommate.isWheelWinner && rankNum === 1)
+          ? '🎡 SACRIFICE BY FATE'
+          : rankNum === 1 
+            ? '🔥 NEXT SACRIFICE' 
+            : isTopFiller 
+              ? '👑 OASIS SAVIOR' 
+              : isCactus 
+                ? '🌵 HUMAN CACTUS' 
+                : '💧 WATER WARRIOR';
 
       const debtNotice = isDebtor ? ' • ⚠️ IN WATER DEBT' : '';
       const fillsLabel = `${totalFills} total fills (${roommate.fillPercentage}% share)${debtNotice}`;
@@ -1629,6 +2244,9 @@ class WaterKegApp {
         this.domHistoryFeedContainer.appendChild(item);
       });
     }
+
+    // Edge Case 2: Render wheel modal contents purely as view logic without mutating state
+    this.renderWheelModalContent();
   }
 }
 

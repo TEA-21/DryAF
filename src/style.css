@@ -2138,5 +2138,392 @@ body {
   vertical-align: middle;
 }
 
+/* ==========================================================================
+   WHEEL OF SACRIFICE (EQUAL PRIORITY TIE BREAKER)
+   ========================================================================== */
 
+/* Active Wheel Banner on Reservoir Card */
+.active-wheel-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--desert-amber-bg, #FEF3C7);
+  border: var(--ink-border, 3px solid #18181B);
+  border-radius: var(--radius-sm, 6px);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--comic-shadow-sm, 3px 3px 0px #18181B);
+  animation: bannerPulse 2s ease-in-out infinite alternate;
+}
 
+@keyframes bannerPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.01); }
+}
+
+.wheel-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wheel-banner-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.wheel-banner-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.wheel-banner-sub {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--desert-amber-dark, #B45309);
+}
+
+/* Modal Window */
+.wheel-modal-window {
+  max-width: 440px;
+  text-align: center;
+}
+
+.modal-subtitle-comic {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--hazard-red-dark, #DC2626);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.wheel-lead-text {
+  font-family: var(--font-comic);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin-bottom: 12px;
+}
+
+/* Wheel Canvas Stage */
+.wheel-stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px auto 14px;
+  width: 300px;
+  height: 300px;
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  font-size: 2.2rem;
+  color: var(--hazard-red, #EF4444);
+  line-height: 1;
+  text-shadow: 2px 2px 0px var(--ink-black, #18181B);
+  filter: drop-shadow(0 2px 0 var(--ink-black, #18181B));
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.1s ease;
+}
+
+.wheel-pointer.tick {
+  transform: translateX(-50%) scale(1.15) rotate(-5deg);
+}
+
+.wheel-canvas-wrapper {
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: var(--ink-border, 3px solid #18181B);
+  box-shadow: var(--comic-shadow, 4px 4px 0px #18181B);
+  background: var(--bg-surface-card, #FFFFFF);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#wheelCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+}
+
+/* Countdown Overlay */
+.wheel-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(24, 24, 27, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  color: #FFFFFF;
+}
+
+.countdown-badge {
+  font-family: var(--font-comic);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--desert-amber, #FBBF24);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.countdown-number {
+  font-family: var(--font-display);
+  font-size: 5rem;
+  line-height: 1;
+  color: var(--desert-amber, #FBBF24);
+  text-shadow: 3px 3px 0px #000000;
+  animation: countdownPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes countdownPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.countdown-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #E4E4E7;
+  letter-spacing: 0.04em;
+}
+
+/* Winner Card */
+.wheel-winner-card {
+  position: relative;
+  background: #FEF3C7;
+  border: var(--ink-border, 3px solid #18181B);
+  box-shadow: var(--comic-shadow, 4px 4px 0px #18181B);
+  border-radius: var(--radius-sm, 6px);
+  padding: 14px 16px;
+  margin: 12px 0 14px;
+  text-align: center;
+  animation: winnerCardSlide 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes winnerCardSlide {
+  0% { transform: translateY(12px) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.winner-sticker {
+  display: inline-block;
+  background: var(--hazard-red, #EF4444);
+  color: #FFFFFF;
+  border: var(--ink-border-sm, 2px solid #18181B);
+  box-shadow: 2px 2px 0px #18181B;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.winner-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: var(--ink-border, 3px solid #18181B);
+  box-shadow: 2px 2px 0px #18181B;
+  margin: 0 auto 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  background: var(--bg-surface-card);
+}
+
+.winner-headline {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--hazard-red-dark, #DC2626);
+  margin-bottom: 4px;
+}
+
+.winner-flavor {
+  font-family: var(--font-comic);
+  font-size: 0.82rem;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Candidates Consensus Section */
+.wheel-candidates-section {
+  background: var(--bg-surface-card, #FFFFFF);
+  border: var(--ink-border-sm, 2px solid #18181B);
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: 2px 2px 0px #18181B;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.candidates-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.candidates-title {
+  font-family: var(--font-comic);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.candidates-count-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1.5px solid #18181B;
+  background: var(--desert-amber-bg, #FEF3C7);
+  color: var(--desert-amber-dark, #B45309);
+}
+
+.wheel-candidates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wheel-candidate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--bg-subtle, #F4F4F5);
+  border: 1px solid var(--border-color, #E4E4E7);
+}
+
+.wheel-candidate-row.is-current-user {
+  border-color: var(--oasis-cyan, #06B6D4);
+  background: var(--oasis-cyan-bg, #E0F2FE);
+}
+
+.candidate-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.candidate-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid #18181B;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  background: #FFFFFF;
+}
+
+.candidate-name {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.candidate-status-pill {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.candidate-status-pill.agreed {
+  background: #DCFCE7;
+  color: #166534;
+  border-color: #16A34A;
+}
+
+.candidate-status-pill.pending {
+  background: #FEF3C7;
+  color: #92400E;
+  border-color: #F59E0B;
+}
+
+/* Action Area */
+.wheel-action-area {
+  margin-top: 10px;
+}
+
+.wheel-agree-btn {
+  width: 100%;
+  font-size: 0.95rem;
+  padding: 12px;
+}
+
+.wheel-agree-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.wheel-status-hint {
+  font-family: var(--font-comic);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+/* Mobile Responsiveness for Wheel */
+@media (max-width: 480px) {
+  .wheel-stage {
+    width: 260px;
+    height: 260px;
+  }
+
+  .wheel-canvas-wrapper {
+    width: 260px;
+    height: 260px;
+  }
+
+  #wheelCanvas {
+    width: 260px;
+    height: 260px;
+  }
+
+  .countdown-number {
+    font-size: 4rem;
+  }
+}
